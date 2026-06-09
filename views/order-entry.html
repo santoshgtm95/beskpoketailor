@@ -1,0 +1,214 @@
+<div class="page" id="page-order-entry">
+  <div class="order-layout">
+    <!-- Left: Form + Table -->
+    <div class="order-main">
+      <!-- Customer & Date -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="title-icon">👤</span> Customer &amp; Order Info
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="customer-search"
+              >Customer <span class="required">*</span></label
+            >
+            <div class="autocomplete-wrap">
+              <input
+                type="text"
+                id="customer-search"
+                placeholder="Search or type customer name…"
+                autocomplete="off"
+              />
+              <input type="hidden" id="customer-id-hidden" />
+              <div class="autocomplete-dropdown" id="customer-dropdown"></div>
+            </div>
+            <div class="field-error" style="display: none"></div>
+          </div>
+          <div class="form-group">
+            <label for="order-date"
+              >Order Date <span class="required">*</span></label
+            >
+            <input type="date" id="order-date" />
+          </div>
+        </div>
+        <button
+          class="btn btn-ghost btn-sm"
+          id="btn-new-customer"
+          style="margin-top: 4px"
+        >
+          ➕ New Customer
+        </button>
+      </div>
+
+      <!-- Visual Category / Subcategory Picker -->
+      <div class="card" id="order-picker-card">
+        <div class="card-header" style="margin-bottom: 14px">
+          <div class="card-title">
+            <span class="title-icon">🧵</span> Select Category &amp; Subcategory
+          </div>
+        </div>
+
+        <!-- Step 1: Category Cards -->
+        <div id="order-step-cat">
+          <div class="picker-label">Step 1 — Choose a Category</div>
+          <div class="picker-cat-grid" id="order-cat-cards">
+            <div class="picker-skeleton"></div>
+            <div class="picker-skeleton"></div>
+            <div class="picker-skeleton"></div>
+          </div>
+        </div>
+
+        <!-- Step 2: Subcategory Image Cards (hidden until cat selected) -->
+        <div id="order-step-sub" style="display: none">
+          <div class="picker-back-row">
+            <button class="btn btn-ghost btn-sm" id="btn-order-back-cat">
+              ← Back
+            </button>
+            <div
+              class="picker-label"
+              style="margin: 0"
+              id="order-subcat-heading"
+            >
+              Choose a Subcategory
+            </div>
+          </div>
+          <div class="picker-sub-grid" id="order-sub-cards"></div>
+        </div>
+
+        <!-- Step 3: Qty + Price + Add (hidden until subcat selected) -->
+        <div id="order-step-qty" style="display: none">
+          <div class="picker-back-row">
+            <button class="btn btn-ghost btn-sm" id="btn-order-back-sub">
+              ← Back
+            </button>
+            <div
+              class="picker-selected-summary"
+              id="order-selected-summary"
+            ></div>
+          </div>
+          <div class="order-qty-row">
+            <div class="form-group" style="margin: 0; flex: 1">
+              <label for="item-qty">Quantity</label>
+              <input
+                type="number"
+                id="item-qty"
+                value="1"
+                min="0.1"
+                step="0.1"
+              />
+            </div>
+            <div class="form-group" style="margin: 0; flex: 1">
+              <label for="item-unit-price">Unit Price</label>
+              <input
+                type="number"
+                id="item-unit-price"
+                placeholder="0.00"
+                min="0"
+                step="0.01"
+              />
+            </div>
+            <div style="display: flex; align-items: flex-end">
+              <button
+                class="btn btn-gold"
+                id="btn-add-item"
+                style="white-space: nowrap; padding: 10px 24px"
+              >
+                ＋ Add to Order
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Order Lines -->
+      <div class="card" style="flex: 1; display: flex; flex-direction: column">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="title-icon">📄</span> Order Lines
+            <span
+              class="badge badge-gold"
+              id="order-line-count"
+              style="margin-left: 6px"
+              >0</span
+            >
+          </div>
+        </div>
+        <div class="order-table-wrap" style="flex: 1">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Category</th>
+                <th>Subcategory</th>
+                <th class="text-right">Qty</th>
+                <th class="text-right">Unit Price</th>
+                <th class="text-right">Line Total</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="order-lines-body">
+              <tr>
+                <td colspan="6" class="table-empty">
+                  <div class="empty-icon">🧵</div>
+                  No items added yet.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <!-- /order-main -->
+
+    <!-- Right: Summary & Actions -->
+    <div class="order-sidebar">
+      <!-- Grand Total -->
+      <div
+        class="order-total-bar"
+        style="flex-direction: column; align-items: stretch"
+      >
+        <div class="flex justify-between items-center">
+          <span class="total-label">Order Total</span>
+          <span class="total-amount" id="order-grand-total">THB 0.00</span>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="card">
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <button class="btn btn-gold btn-full btn-lg" id="btn-save-order">
+            💾 Save Order
+          </button>
+          <button class="btn btn-ghost btn-full" id="btn-clear-order">
+            🗑 Clear Form
+          </button>
+        </div>
+      </div>
+
+      <!-- Notes / Help -->
+      <div class="card">
+        <div
+          style="font-size: 15px; color: var(--text-muted); line-height: 1.7"
+        >
+          <div
+            style="
+              font-weight: 600;
+              color: var(--text-secondary);
+              margin-bottom: 8px;
+            "
+          >
+            📌 Guidelines
+          </div>
+          <ul style="padding-left: 16px; margin: 0">
+            <li>Select Category → Subcategory</li>
+            <li>Quantity must be a positive number</li>
+            <li>Order Total updates automatically</li>
+            <li>At least one item required to save</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <!-- /order-sidebar -->
+  </div>
+</div>

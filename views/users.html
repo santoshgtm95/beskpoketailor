@@ -1,0 +1,29 @@
+<div class="page" id="page-users">
+  <div class="card" style="margin-bottom: 16px">
+    <div class="flex justify-between items-center">
+      <div class="card-title">👥 System Users</div>
+      <button class="btn btn-gold btn-sm" onclick="UsersPage.openAdd()">
+        ➕ Add User
+      </button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="order-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th class="text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="users-tbody">
+          <tr>
+            <td colspan="4" class="table-empty">Loading…</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

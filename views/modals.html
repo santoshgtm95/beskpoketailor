@@ -1,0 +1,739 @@
+<!-- Confirm Dialog -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h3 id="confirm-title">Confirm</h3>
+      <button class="btn-close-modal" onclick="Modal.close('confirm-modal')">
+        ✕
+      </button>
+    </div>
+    <div class="modal-body">
+      <p id="confirm-message" style="color: var(--text-secondary)"></p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="confirm-cancel">Cancel</button>
+      <button class="btn btn-primary" id="confirm-ok">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Inline New Customer (from Order Entry) -->
+<div class="modal-overlay" id="modal-customer">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h3>👤 New Customer</h3>
+      <button class="btn-close-modal" onclick="Modal.close('modal-customer')">
+        ✕
+      </button>
+    </div>
+    <div class="modal-body">
+      <form id="customer-form" novalidate>
+        <input type="hidden" id="cust-id-hidden" />
+        <div class="form-group">
+          <label>Name <span class="required">*</span></label>
+          <input type="text" id="cust-name" placeholder="Full name" />
+          <div class="field-error" style="display: none"></div>
+        </div>
+        <div class="form-group">
+          <label>Phone</label
+          ><input type="text" id="cust-phone" placeholder="555-0100" />
+        </div>
+        <div class="form-group">
+          <label>Email</label
+          ><input type="email" id="cust-email" placeholder="name@email.com" />
+        </div>
+        <div class="form-group">
+          <label>Address</label
+          ><input type="text" id="cust-address" placeholder="Street address" />
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="Modal.close('modal-customer')">
+        Cancel
+      </button>
+      <button class="btn btn-gold" id="btn-save-customer-inline">
+        Save Customer
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Customer (Customers Page) -->
+<div class="modal-overlay" id="modal-edit-customer">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h3 id="customer-modal-title">Customer</h3>
+      <button
+        class="btn-close-modal"
+        onclick="Modal.close('modal-edit-customer')"
+      >
+        ✕
+      </button>
+    </div>
+    <div class="modal-body">
+      <form id="customer-modal-form" novalidate>
+        <input type="hidden" id="cm-id-hidden" />
+        <div class="form-group">
+          <label>Name <span class="required">*</span></label>
+          <input type="text" id="cm-name" placeholder="Full name" />
+          <div class="field-error" style="display: none"></div>
+        </div>
+        <div class="form-group">
+          <label>Phone</label><input type="text" id="cm-phone" />
+        </div>
+        <div class="form-group">
+          <label>Email</label><input type="email" id="cm-email" />
+        </div>
+        <div class="form-group">
+          <label>Address</label><input type="text" id="cm-address" />
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button
+        class="btn btn-ghost"
+        onclick="Modal.close('modal-edit-customer')"
+      >
+        Cancel
+      </button>
+      <button class="btn btn-gold" id="btn-save-customer-modal">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- View Order Detail -->
+<div class="modal-overlay" id="modal-view-order">
+  <div class="modal modal-xl">
+    <div class="modal-header">
+      <h3>📄 Order Detail</h3>
+      <button class="btn-close-modal" onclick="Modal.close('modal-view-order')">
+        ✕
+      </button>
+    </div>
+    <div class="modal-body" id="view-order-content">Loading…</div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="Modal.close('modal-view-order')">
+        Close
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Subcategory Modal -->
+<div class="modal-overlay" id="modal-sub">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h3 id="sub-modal-title">Subcategory</h3>
+      <button class="btn-close-modal" onclick="Modal.close('modal-sub')">
+        ✕
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Category <span class="required">*</span></label>
+        <select id="sub-cat-id"></select>
+      </div>
+      <div class="form-group">
+        <label>Name <span class="required">*</span></label>
+        <input type="text" id="sub-name" placeholder="e.g. Leather, Denim…" />
+      </div>
+      <div class="form-group">
+        <label>Subcategory Image</label>
+        <input
+          type="file"
+          id="sub-image-file"
+          accept="image/*"
+          style="display: none"
+        />
+        <input type="hidden" id="sub-image-url" />
+        <div
+          style="display: flex; align-items: center; gap: 12px; margin-top: 6px"
+        >
+          <button
+            type="button"
+            class="btn btn-ghost btn-sm"
+            onclick="document.getElementById('sub-image-file').click()"
+            style="padding: 6px 12px; font-size: 12px"
+          >
+            🖼️ Choose Image…
+          </button>
+          <span
+            id="sub-image-filename"
+            class="text-muted"
+            style="
+              font-size: 11px;
+              max-width: 150px;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
+            "
+            >No image chosen</span
+          >
+        </div>
+        <div
+          id="sub-image-preview-wrap"
+          style="display: none; margin-top: 10px"
+        >
+          <img
+            id="sub-image-preview"
+            src=""
+            alt="Preview"
+            style="
+              width: 80px;
+              height: 80px;
+              object-fit: cover;
+              border-radius: 6px;
+              border: 1px solid var(--border);
+              box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            "
+          />
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="Modal.close('modal-sub')">
+        Cancel
+      </button>
+      <button class="btn btn-gold" id="btn-save-sub">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- User Modal -->
+<div class="modal-overlay" id="modal-user">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="user-modal-title">User</h3>
+      <button class="btn-close-modal" onclick="Modal.close('modal-user')">
+        ✕
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" id="um-name" placeholder="Full name" />
+        </div>
+        <div class="form-group">
+          <label>Username <span class="required">*</span></label>
+          <input
+            type="text"
+            id="um-username"
+            placeholder="username"
+            autocomplete="off"
+          />
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="um-email" placeholder="email@example.com" />
+        </div>
+        <div class="form-group">
+          <label>Phone</label>
+          <input type="text" id="um-phone" placeholder="555-0100" />
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Role</label>
+          <select id="um-role">
+            <option value="Clerk">Clerk</option>
+            <option value="Admin">Admin</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input
+            type="password"
+            id="um-password"
+            placeholder="Leave blank to keep current"
+            autocomplete="new-password"
+          />
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="Modal.close('modal-user')">
+        Cancel
+      </button>
+      <button class="btn btn-gold" id="btn-save-user">Save User</button>
+    </div>
+  </div>
+</div>
+
+<!-- Measurements Modal (for Jacket > Subcategory) -->
+<div class="modal-overlay" id="modal-measurements">
+  <div class="modal modal-xl">
+    <div class="modal-header">
+      <h3 id="measurements-modal-title">Subcategory Details</h3>
+      <button
+        class="btn-close-modal"
+        onclick="Modal.close('modal-measurements')"
+      >
+        ✕
+      </button>
+    </div>
+    <div class="modal-body">
+      <!-- Image & Info -->
+      <div
+        style="
+          display: flex;
+          gap: 16px;
+          margin-bottom: 12px;
+          align-items: flex-start;
+        "
+      >
+        <div id="meas-sub-image-wrap" style="flex-shrink: 0"></div>
+        <div style="flex: 1">
+          <h4
+            id="meas-cat-sub-name"
+            style="margin: 0 0 8px 0; color: var(--text-primary); font-size: 18px"
+          >
+            Category - Subcategory
+          </h4>
+          <textarea
+            id="meas-description"
+            class="form-control"
+            rows="2"
+            placeholder="Enter description..."
+            style="width: 100%"
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- Gender -->
+      <div class="form-group">
+        <label>Gender <span class="required">*</span></label>
+        <div style="display: flex; gap: 16px">
+          <label
+            ><input type="radio" name="meas-gender" value="Man" checked />
+            Man</label
+          >
+          <label
+            ><input type="radio" name="meas-gender" value="Women" />
+            Women</label
+          >
+        </div>
+      </div>
+
+      <!-- Formatting measurements grid -->
+      <div
+        class="grid-6"
+        style="column-gap: 12px; row-gap: 12px; margin-bottom: 12px"
+      >
+        <div class="form-group">
+          <label>Length</label><input type="text" id="meas-length" />
+        </div>
+        <div class="form-group">
+          <label>Chest</label><input type="text" id="meas-chest" />
+        </div>
+        <div class="form-group">
+          <label>Waist</label><input type="text" id="meas-waist" />
+        </div>
+        <div class="form-group">
+          <label>Hips</label><input type="text" id="meas-hips" />
+        </div>
+        <div class="form-group">
+          <label>Shoulder</label><input type="text" id="meas-shoulder" />
+        </div>
+        <div class="form-group">
+          <label>Sleeves</label><input type="text" id="meas-sleeves" />
+        </div>
+        <div class="form-group">
+          <label>Front</label><input type="text" id="meas-front" />
+        </div>
+        <div class="form-group">
+          <label>Back</label><input type="text" id="meas-back" />
+        </div>
+        <div class="form-group">
+          <label>Neck</label><input type="text" id="meas-neck" />
+        </div>
+      </div>
+
+      <!-- Characteristics checkboxes -->
+      <div class="form-group">
+        <label>Characteristics</label>
+        <div class="grid-4" style="gap: 8px">
+          <label
+            ><input type="checkbox" id="meas-chk-shoulder" /> Shoulder
+            tilt</label
+          >
+          <label
+            ><input type="checkbox" id="meas-chk-hunchback" /> Hunchback</label
+          >
+          <label
+            ><input type="checkbox" id="meas-chk-belly" /> Have Belly</label
+          >
+          <label
+            ><input type="checkbox" id="meas-chk-arched" /> Arched back</label
+          >
+        </div>
+      </div>
+
+      <!-- Order Info -->
+      <div class="order-qty-row" style="margin-top: 20px">
+        <div class="form-group" style="margin: 0; flex: 1">
+          <label>Quantity</label>
+          <input type="number" id="meas-qty" value="1" min="0.1" step="0.1" />
+        </div>
+        <div class="form-group" style="margin: 0; flex: 1">
+          <label>Color</label>
+          <input type="text" id="meas-color" placeholder="e.g. Black" />
+        </div>
+        <div class="form-group" style="margin: 0; flex: 1">
+          <label>Unit Price</label>
+          <input
+            type="number"
+            id="meas-unit-price"
+            placeholder="0.00"
+            min="0"
+            step="0.01"
+          />
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="Modal.close('modal-measurements')">
+        Cancel
+      </button>
+      <button
+        class="btn btn-gold"
+        id="btn-save-meas"
+        onclick="OrdersPage.addLineItemFromModal()"
+      >
+        ＋ Add to Order
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Measurements Modal (for Pant > Subcategory) -->
+<div class="modal-overlay" id="modal-meas-pant">
+  <div class="modal modal-xl">
+    <div class="modal-header">
+      <h3 id="meas-pant-modal-title">Subcategory Details</h3>
+      <button class="btn-close-modal" onclick="Modal.close('modal-meas-pant')">
+        ✕
+      </button>
+    </div>
+    <div class="modal-body">
+      <!-- Image & Info -->
+      <div
+        style="
+          display: flex;
+          gap: 16px;
+          margin-bottom: 12px;
+          align-items: flex-start;
+        "
+      >
+        <div id="meas-pant-sub-image-wrap" style="flex-shrink: 0"></div>
+        <div style="flex: 1">
+          <h4
+            id="meas-pant-cat-sub-name"
+            style="margin: 0 0 8px 0; color: var(--text-primary); font-size: 18px"
+          >
+            Category - Subcategory
+          </h4>
+          <textarea
+            id="meas-pant-description"
+            class="form-control"
+            rows="2"
+            placeholder="Enter description..."
+            style="width: 100%"
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- Gender -->
+      <div class="form-group">
+        <label>Gender <span class="required">*</span></label>
+        <div style="display: flex; gap: 16px">
+          <label
+            ><input type="radio" name="meas-pant-gender" value="Man" checked />
+            Man</label
+          >
+          <label
+            ><input type="radio" name="meas-pant-gender" value="Women" />
+            Women</label
+          >
+        </div>
+      </div>
+
+      <!-- Formatting measurements grid -->
+      <div
+        class="grid-6"
+        style="column-gap: 12px; row-gap: 12px; margin-bottom: 12px"
+      >
+        <div class="form-group">
+          <label>Waist</label><input type="text" id="meas-pant-waist" />
+        </div>
+        <div class="form-group">
+          <label>Hips</label><input type="text" id="meas-pant-hips" />
+        </div>
+        <div class="form-group">
+          <label>Crotch</label><input type="text" id="meas-pant-crotch" />
+        </div>
+        <div class="form-group">
+          <label>Thighs</label><input type="text" id="meas-pant-thighs" />
+        </div>
+        <div class="form-group">
+          <label>Knee</label><input type="text" id="meas-pant-knee" />
+        </div>
+        <div class="form-group">
+          <label>Bottom</label><input type="text" id="meas-pant-bottom" />
+        </div>
+        <div class="form-group">
+          <label>Length</label><input type="text" id="meas-pant-length" />
+        </div>
+        <div class="form-group">
+          <label>Shorts</label><input type="text" id="meas-pant-shorts" />
+        </div>
+        <div class="form-group">
+          <label>Stomach</label><input type="text" id="meas-pant-stomach" />
+        </div>
+        <div class="form-group">
+          <label>Skirt Length</label
+          ><input type="text" id="meas-pant-skirt-length" />
+        </div>
+      </div>
+
+      <!-- Characteristics checkboxes -->
+      <div class="form-group">
+        <label>Characteristics</label>
+        <div class="grid-4" style="gap: 8px">
+          <label
+            ><input type="checkbox" id="meas-pant-chk-flat" /> Flat
+            buttom</label
+          >
+          <label
+            ><input type="checkbox" id="meas-pant-chk-curly" /> Curly
+            Butt</label
+          >
+          <label
+            ><input type="checkbox" id="meas-pant-chk-belly" /> Have
+            Belly</label
+          >
+          <label
+            ><input type="checkbox" id="meas-pant-chk-thick" /> Thick</label
+          >
+        </div>
+      </div>
+
+      <!-- Order Info -->
+      <div class="order-qty-row" style="margin-top: 20px">
+        <div class="form-group" style="margin: 0; flex: 1">
+          <label>Quantity</label>
+          <input
+            type="number"
+            id="meas-pant-qty"
+            value="1"
+            min="0.1"
+            step="0.1"
+          />
+        </div>
+        <div class="form-group" style="margin: 0; flex: 1">
+          <label>Color</label>
+          <input type="text" id="meas-pant-color" placeholder="e.g. Black" />
+        </div>
+        <div class="form-group" style="margin: 0; flex: 1">
+          <label>Unit Price</label>
+          <input
+            type="number"
+            id="meas-pant-unit-price"
+            placeholder="0.00"
+            min="0"
+            step="0.01"
+          />
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="Modal.close('modal-meas-pant')">
+        Cancel
+      </button>
+      <button
+        class="btn btn-gold"
+        id="btn-save-meas-pant"
+        onclick="OrdersPage.addLineItemFromPantModal()"
+      >
+        ＋ Add to Order
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Measurements Modal (for Shirt > Subcategory) -->
+<div class="modal-overlay" id="modal-meas-shirt">
+  <div class="modal modal-xl">
+    <div class="modal-header">
+      <h3 id="meas-shirt-modal-title">Subcategory Details</h3>
+      <button class="btn-close-modal" onclick="Modal.close('modal-meas-shirt')">
+        ✕
+      </button>
+    </div>
+    <div class="modal-body">
+      <!-- Image & Info -->
+      <div
+        style="
+          display: flex;
+          gap: 16px;
+          margin-bottom: 12px;
+          align-items: flex-start;
+        "
+      >
+        <div id="meas-shirt-sub-image-wrap" style="flex-shrink: 0"></div>
+        <div style="flex: 1">
+          <h4
+            id="meas-shirt-cat-sub-name"
+            style="margin: 0 0 8px 0; color: var(--text-primary); font-size: 18px"
+          >
+            Category - Subcategory
+          </h4>
+          <textarea
+            id="meas-shirt-description"
+            class="form-control"
+            rows="2"
+            placeholder="Enter description..."
+            style="width: 100%"
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- Gender -->
+      <div class="form-group">
+        <label>Gender <span class="required">*</span></label>
+        <div style="display: flex; gap: 16px">
+          <label
+            ><input type="radio" name="meas-shirt-gender" value="Man" checked />
+            Man</label
+          >
+          <label
+            ><input type="radio" name="meas-shirt-gender" value="Women" />
+            Women</label
+          >
+        </div>
+      </div>
+
+      <!-- Formatting measurements grid -->
+      <div
+        class="grid-6"
+        style="column-gap: 12px; row-gap: 12px; margin-bottom: 12px"
+      >
+        <div class="form-group">
+          <label>Length</label><input type="text" id="meas-shirt-length" />
+        </div>
+        <div class="form-group">
+          <label>Chest</label><input type="text" id="meas-shirt-chest" />
+        </div>
+        <div class="form-group">
+          <label>Waist</label><input type="text" id="meas-shirt-waist" />
+        </div>
+        <div class="form-group">
+          <label>Hips</label><input type="text" id="meas-shirt-hips" />
+        </div>
+        <div class="form-group">
+          <label>Shoulder</label><input type="text" id="meas-shirt-shoulder" />
+        </div>
+        <div class="form-group">
+          <label>Sleeves</label><input type="text" id="meas-shirt-sleeves" />
+        </div>
+        <div class="form-group">
+          <label>Neck</label><input type="text" id="meas-shirt-neck" />
+        </div>
+        <div class="form-group">
+          <label>Cuffs</label><input type="text" id="meas-shirt-cuffs" />
+        </div>
+        <div class="form-group">
+          <label>Front Length</label
+          ><input type="text" id="meas-shirt-front-length" />
+        </div>
+        <div class="form-group">
+          <label>Back Length</label
+          ><input type="text" id="meas-shirt-back-length" />
+        </div>
+        <div class="form-group">
+          <label>Bust Height</label
+          ><input type="text" id="meas-shirt-bust-height" />
+        </div>
+        <div class="form-group">
+          <label>Bust Width</label
+          ><input type="text" id="meas-shirt-bust-width" />
+        </div>
+        <div class="form-group">
+          <label>Front</label><input type="text" id="meas-shirt-front" />
+        </div>
+        <div class="form-group">
+          <label>Back</label><input type="text" id="meas-shirt-back" />
+        </div>
+        <div class="form-group">
+          <label>Skirt Length</label
+          ><input type="text" id="meas-shirt-skirt-length" />
+        </div>
+      </div>
+
+      <!-- Characteristics checkboxes -->
+      <div class="form-group">
+        <label>Characteristics</label>
+        <div class="grid-4" style="gap: 8px">
+          <label
+            ><input type="checkbox" id="meas-shirt-chk-shoulder-pour" />
+            Shoulder pour</label
+          >
+          <label
+            ><input type="checkbox" id="meas-shirt-chk-curly" /> Curly
+            Butt</label
+          >
+          <label
+            ><input type="checkbox" id="meas-shirt-chk-belly" /> Have
+            Belly</label
+          >
+          <label
+            ><input type="checkbox" id="meas-shirt-chk-thick" /> Thick</label
+          >
+        </div>
+      </div>
+
+      <!-- Order Info -->
+      <div class="order-qty-row" style="margin-top: 20px">
+        <div class="form-group" style="margin: 0; flex: 1">
+          <label>Quantity</label>
+          <input
+            type="number"
+            id="meas-shirt-qty"
+            value="1"
+            min="0.1"
+            step="0.1"
+          />
+        </div>
+        <div class="form-group" style="margin: 0; flex: 1">
+          <label>Color</label>
+          <input type="text" id="meas-shirt-color" placeholder="e.g. White" />
+        </div>
+        <div class="form-group" style="margin: 0; flex: 1">
+          <label>Unit Price</label>
+          <input
+            type="number"
+            id="meas-shirt-unit-price"
+            placeholder="0.00"
+            min="0"
+            step="0.01"
+          />
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="Modal.close('modal-meas-shirt')">
+        Cancel
+      </button>
+      <button
+        class="btn btn-gold"
+        id="btn-save-meas-shirt"
+        onclick="OrdersPage.addLineItemFromShirtModal()"
+      >
+        ＋ Add to Order
+      </button>
+    </div>
+  </div>
+</div>

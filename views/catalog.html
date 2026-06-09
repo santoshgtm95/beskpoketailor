@@ -1,0 +1,28 @@
+<div class="page" id="page-catalog">
+  <div class="card" style="margin-bottom: 16px">
+    <div class="flex justify-between items-center">
+      <div class="card-title">Subcategories</div>
+      <button class="btn btn-gold btn-sm" onclick="CatalogPage.openAddSub()">
+        ➕ Add Subcategory
+      </button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="order-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Category</th>
+            <th class="text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="subs-tbody">
+          <tr>
+            <td colspan="3" class="table-empty">Loading…</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,47 @@
+<div class="page" id="page-customers">
+  <div class="card" style="margin-bottom: 16px">
+    <div class="flex justify-between items-center gap-3">
+      <div class="search-input-wrap" style="max-width: 320px; flex: 1">
+        <span class="search-icon">🔍</span>
+        <input
+          type="text"
+          id="customers-search"
+          placeholder="Search customers…"
+        />
+      </div>
+      <div class="flex gap-2 items-center">
+        <span class="text-muted" style="font-size: 13px"
+          ><strong id="customers-count">0</strong> customers</span
+        >
+        <button
+          class="btn btn-gold btn-sm"
+          onclick="CustomersPage.openAdd()"
+        >
+          ➕ Add Customer
+        </button>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="order-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Email</th>
+            <th>Address</th>
+            <th class="text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="customers-tbody">
+          <tr>
+            <td colspan="6" class="table-empty">Loading…</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="pagination" id="customers-pagination"></div>
+  </div>
+</div>

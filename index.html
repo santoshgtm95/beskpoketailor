@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Siam Bespoke Tailor – Management</title>
+    <meta
+      name="description"
+      content="Siam Bespoke Tailor: Premium desktop tailor shop management – orders, customers, catalog, and more."
+    />
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <!-- Connection Offline Banner -->
+    <div
+      id="connection-error-banner"
+      style="
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: #7f1d1d;
+        color: #fca5a5;
+        padding: 10px 20px;
+        text-align: center;
+        font-size: 13px;
+        z-index: 9999;
+        border-bottom: 1px solid #991b1b;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+      "
+    >
+      <span
+        >⚠️ Cannot connect to the SQLite backend server. Please make sure the
+        server is running on port 3000.</span
+      >
+      <button
+        class="btn btn-gold btn-sm"
+        onclick="window.location.reload()"
+        style="
+          padding: 2px 8px;
+          font-size: 11px;
+          margin-left: 10px;
+          cursor: pointer;
+        "
+      >
+        Retry Connection
+      </button>
+    </div>
+
+    <!-- Login Screen Placeholder -->
+    <div id="login-screen-placeholder"></div>
+
+    <!-- App Shell -->
+    <div id="app">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-icon">✂</div>
+          <div class="brand-text">
+            <h2>SIAM BESPOKE</h2>
+            <p>Tailor Shop</p>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav" id="sidebar-nav">
+          <!-- built dynamically by AppShell.buildNav() -->
+        </nav>
+
+        <div class="sidebar-footer">
+          <div class="user-chip">
+            <div class="user-avatar" id="sidebar-user-avatar">A</div>
+            <div class="user-info">
+              <div class="user-name" id="sidebar-user-name">Administrator</div>
+              <div class="user-role" id="sidebar-user-role">Admin</div>
+            </div>
+          </div>
+          <button class="btn btn-ghost btn-full btn-logout" id="btn-logout">
+            🚪 Sign Out
+          </button>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <div class="main-content">
+        <!-- Topbar -->
+        <header class="topbar">
+          <div class="topbar-title" id="topbar-title">
+            <span>🏠</span> Dashboard
+          </div>
+          <div class="topbar-actions">
+            <span class="topbar-clock" id="topbar-clock">00:00:00</span>
+            <button
+              class="btn btn-gold btn-sm"
+              onclick="AppShell.navigate('order-entry')"
+            >
+              ✂️ New Order
+            </button>
+          </div>
+        </header>
+
+        <!-- Pages Placeholders -->
+        <div id="page-dashboard-placeholder"></div>
+        <div id="page-order-entry-placeholder"></div>
+        <div id="page-order-history-placeholder"></div>
+        <div id="page-customers-placeholder"></div>
+        <div id="page-catalog-placeholder"></div>
+        <div id="page-users-placeholder"></div>
+        <div id="page-auditlog-placeholder"></div>
+      </div>
+    </div>
+
+    <!-- Modals Placeholder -->
+    <div id="modals-placeholder"></div>
+
+    <!-- Scripts -->
+    <script src="js/db.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/orders.js"></script>
+    <script src="js/catalog.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>

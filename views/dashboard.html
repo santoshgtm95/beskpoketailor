@@ -1,0 +1,123 @@
+<div class="page active" id="page-dashboard">
+  <h2
+    id="dashboard-greeting"
+    style="
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: var(--text-primary);
+    "
+  >
+    Good morning!
+  </h2>
+
+  <!-- Stats Row -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-icon gold">💰</div>
+      <div class="stat-info">
+        <div class="stat-value" id="stat-total-revenue">THB 0.00</div>
+        <div class="stat-label">Total Revenue</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon blue">📋</div>
+      <div class="stat-info">
+        <div class="stat-value" id="stat-total-orders">0</div>
+        <div class="stat-label">Total Orders</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon green">👥</div>
+      <div class="stat-info">
+        <div class="stat-value" id="stat-total-customers">0</div>
+        <div class="stat-label">Customers</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon gold">📅</div>
+      <div class="stat-info">
+        <div class="stat-value" id="stat-today-orders">0</div>
+        <div class="stat-label">Today's Orders</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2" style="gap: 20px">
+    <!-- Recent Orders -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="title-icon">🕐</span> Recent Orders
+        </div>
+        <button
+          class="btn btn-ghost btn-sm"
+          onclick="AppShell.navigate('order-history')"
+        >
+          View All →
+        </button>
+      </div>
+      <div class="order-table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Customer</th>
+              <th>Date</th>
+              <th class="text-right">Total</th>
+            </tr>
+          </thead>
+          <tbody id="recent-orders-tbody">
+            <tr>
+              <td colspan="4" class="table-empty">Loading…</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Top Items + Avg -->
+    <div style="display: flex; flex-direction: column; gap: 16px">
+      <div class="card">
+        <div
+          style="
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+          "
+        >
+          <div>
+            <div
+              class="text-muted"
+              style="
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+              "
+            >
+              Avg. Order Value
+            </div>
+            <div class="stat-value text-gold" id="stat-avg-order">THB 0.00</div>
+          </div>
+          <div style="font-size: 36px">💎</div>
+        </div>
+      </div>
+      <!-- Quick Actions -->
+      <div class="card">
+        <div class="card-header" style="margin-bottom: 12px">
+          <div class="card-title">
+            <span class="title-icon">⚡</span> Quick Actions
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <button class="btn btn-gold btn-full" id="quick-new-order">
+            ✂️ Create New Order
+          </button>
+          <button class="btn btn-ghost btn-full" id="quick-new-customer">
+            ➕ Add Customer
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

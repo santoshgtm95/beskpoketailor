@@ -1,0 +1,56 @@
+<div class="page" id="page-order-history">
+  <div class="card" style="margin-bottom: 16px">
+    <div
+      class="flex justify-between items-center gap-3"
+      style="flex-wrap: wrap"
+    >
+      <div class="flex gap-3 items-center" style="flex-wrap: wrap; flex: 1">
+        <div class="search-input-wrap" style="min-width: 220px; flex: 1">
+          <span class="search-icon">🔍</span>
+          <input
+            type="text"
+            id="history-search"
+            placeholder="Search customer or order #…"
+          />
+        </div>
+        <input
+          type="date"
+          id="history-filter-date"
+          style="width: 160px"
+          title="Filter by date"
+        />
+      </div>
+      <div class="flex gap-2 items-center">
+        <span class="text-muted" style="font-size: 13px"
+          ><strong id="history-total-count">0</strong> orders ·
+          <span class="text-gold" id="history-total-revenue"
+            >THB 0.00</span
+          ></span
+        >
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="order-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Date</th>
+            <th>Customer</th>
+            <th>Items</th>
+            <th class="text-right">Total</th>
+            <th class="text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="history-tbody">
+          <tr>
+            <td colspan="6" class="table-empty">Loading…</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="pagination" id="history-pagination"></div>
+  </div>
+</div>

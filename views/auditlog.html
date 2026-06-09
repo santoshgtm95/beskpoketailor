@@ -1,0 +1,37 @@
+<div class="page" id="page-auditlog">
+  <div class="card" style="margin-bottom: 16px">
+    <div class="flex justify-between items-center gap-3">
+      <div class="search-input-wrap" style="max-width: 320px; flex: 1">
+        <span class="search-icon">🔍</span>
+        <input
+          type="text"
+          id="audit-search"
+          placeholder="Search logs…"
+        />
+      </div>
+      <span class="text-muted" style="font-size: 13px"
+        >Activity log</span
+      >
+    </div>
+  </div>
+  <div class="card">
+    <div class="order-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Action</th>
+            <th>Details</th>
+            <th>User ID</th>
+          </tr>
+        </thead>
+        <tbody id="audit-tbody">
+          <tr>
+            <td colspan="4" class="table-empty">Loading…</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="pagination" id="audit-pagination"></div>
+  </div>
+</div>
