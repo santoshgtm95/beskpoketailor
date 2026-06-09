@@ -289,7 +289,11 @@
         <div style="flex: 1">
           <h4
             id="meas-cat-sub-name"
-            style="margin: 0 0 8px 0; color: var(--text-primary); font-size: 18px"
+            style="
+              margin: 0 0 8px 0;
+              color: var(--text-primary);
+              font-size: 18px;
+            "
           >
             Category - Subcategory
           </h4>
@@ -300,21 +304,6 @@
             placeholder="Enter description..."
             style="width: 100%"
           ></textarea>
-        </div>
-      </div>
-
-      <!-- Gender -->
-      <div class="form-group">
-        <label>Gender <span class="required">*</span></label>
-        <div style="display: flex; gap: 16px">
-          <label
-            ><input type="radio" name="meas-gender" value="Man" checked />
-            Man</label
-          >
-          <label
-            ><input type="radio" name="meas-gender" value="Women" />
-            Women</label
-          >
         </div>
       </div>
 
@@ -355,20 +344,120 @@
       <!-- Characteristics checkboxes -->
       <div class="form-group">
         <label>Characteristics</label>
-        <div class="grid-4" style="gap: 8px">
-          <label
-            ><input type="checkbox" id="meas-chk-shoulder" /> Shoulder
-            tilt</label
-          >
-          <label
-            ><input type="checkbox" id="meas-chk-hunchback" /> Hunchback</label
-          >
-          <label
-            ><input type="checkbox" id="meas-chk-belly" /> Have Belly</label
-          >
-          <label
-            ><input type="checkbox" id="meas-chk-arched" /> Arched back</label
-          >
+        <div
+          class="grid-2"
+          style="column-gap: 24px; row-gap: 12px; margin-bottom: 20px"
+        >
+          <!-- Left Column -->
+          <div style="display: flex; flex-direction: column; gap: 12px">
+            <label style="display: flex; align-items: flex-start; gap: 8px">
+              <input
+                type="checkbox"
+                id="meas-chk-sloping-shoulder"
+                style="width: auto; margin-top: 4px"
+              />
+              <span
+                >Sloping Shoulder<br /><span
+                  style="font-weight: normal; color: var(--text-muted)"
+                  >(ไหล่เทา)</span
+                ></span
+              >
+            </label>
+            <label style="display: flex; align-items: flex-start; gap: 8px">
+              <input
+                type="checkbox"
+                id="meas-chk-hunched-back"
+                style="width: auto; margin-top: 4px"
+              />
+              <span
+                >Hunched Back<br /><span
+                  style="font-weight: normal; color: var(--text-muted)"
+                  >(หลังค่อม)</span
+                ></span
+              >
+            </label>
+            <label style="display: flex; align-items: flex-start; gap: 8px">
+              <input
+                type="checkbox"
+                id="meas-chk-belly"
+                style="width: auto; margin-top: 4px"
+              />
+              <span
+                >Belly<br /><span
+                  style="font-weight: normal; color: var(--text-muted)"
+                  >(มีพุง)</span
+                ></span
+              >
+            </label>
+            <label style="display: flex; align-items: flex-start; gap: 8px">
+              <input
+                type="checkbox"
+                id="meas-chk-sway-back"
+                style="width: auto; margin-top: 4px"
+              />
+              <span
+                >Sway Back<br /><span
+                  style="font-weight: normal; color: var(--text-muted)"
+                  >(หลังอ่อน)</span
+                ></span
+              >
+            </label>
+          </div>
+          <!-- Right Column -->
+          <div style="display: flex; flex-direction: column; gap: 12px">
+            <label style="display: flex; align-items: flex-start; gap: 8px">
+              <input
+                type="checkbox"
+                id="meas-chk-male"
+                style="width: auto; margin-top: 4px"
+              />
+              <span
+                >Male<br /><span
+                  style="font-weight: normal; color: var(--text-muted)"
+                  >(ผู้ชาย)</span
+                ></span
+              >
+            </label>
+            <label style="display: flex; align-items: flex-start; gap: 8px">
+              <input
+                type="checkbox"
+                id="meas-chk-female"
+                style="width: auto; margin-top: 4px"
+              />
+              <span
+                >Female<br /><span
+                  style="font-weight: normal; color: var(--text-muted)"
+                  >(ผู้หญิง)</span
+                ></span
+              >
+            </label>
+            <label style="display: flex; align-items: flex-start; gap: 8px">
+              <input
+                type="checkbox"
+                id="meas-chk-low-leg"
+                style="width: auto; margin-top: 4px"
+              />
+              <span
+                >Low Leg<br /><span
+                  style="font-weight: normal; color: var(--text-muted)"
+                  >(ขาต่ำ)</span
+                ></span
+              >
+            </label>
+            <label style="display: flex; align-items: flex-start; gap: 8px">
+              <input
+                type="checkbox"
+                id="meas-chk-left-lower"
+                style="width: auto; margin-top: 4px"
+              />
+              <span
+                >Left Side Lower<br /><span
+                  style="font-weight: normal; color: var(--text-muted)"
+                  >(ซ้ายต่ำ)</span
+                ></span
+              >
+            </label>
+          </div>
         </div>
       </div>
 
@@ -432,7 +521,11 @@
         <div style="flex: 1">
           <h4
             id="meas-pant-cat-sub-name"
-            style="margin: 0 0 8px 0; color: var(--text-primary); font-size: 18px"
+            style="
+              margin: 0 0 8px 0;
+              color: var(--text-primary);
+              font-size: 18px;
+            "
           >
             Category - Subcategory
           </h4>
@@ -443,21 +536,6 @@
             placeholder="Enter description..."
             style="width: 100%"
           ></textarea>
-        </div>
-      </div>
-
-      <!-- Gender -->
-      <div class="form-group">
-        <label>Gender <span class="required">*</span></label>
-        <div style="display: flex; gap: 16px">
-          <label
-            ><input type="radio" name="meas-pant-gender" value="Man" checked />
-            Man</label
-          >
-          <label
-            ><input type="radio" name="meas-pant-gender" value="Women" />
-            Women</label
-          >
         </div>
       </div>
 
@@ -502,22 +580,94 @@
       <!-- Characteristics checkboxes -->
       <div class="form-group">
         <label>Characteristics</label>
-        <div class="grid-4" style="gap: 8px">
-          <label
-            ><input type="checkbox" id="meas-pant-chk-flat" /> Flat
-            buttom</label
-          >
-          <label
-            ><input type="checkbox" id="meas-pant-chk-curly" /> Curly
-            Butt</label
-          >
-          <label
-            ><input type="checkbox" id="meas-pant-chk-belly" /> Have
-            Belly</label
-          >
-          <label
-            ><input type="checkbox" id="meas-pant-chk-thick" /> Thick</label
-          >
+        <div
+          class="grid-2"
+          style="column-gap: 24px; row-gap: 12px; margin-bottom: 20px"
+        >
+          <!-- Left Column -->
+          <div style="display: flex; flex-direction: column; gap: 12px">
+            <label style="display: flex; align-items: flex-start; gap: 8px">
+              <input
+                type="checkbox"
+                id="meas-pant-chk-flat-seat"
+                style="width: auto; margin-top: 4px"
+              />
+              <span
+                >Flat Seat<br /><span
+                  style="font-weight: normal; color: var(--text-muted)"
+                  >(ก้นแบน)</span
+                ></span
+              >
+            </label>
+            <label style="display: flex; align-items: flex-start; gap: 8px">
+              <input
+                type="checkbox"
+                id="meas-pant-chk-prominent-seat"
+                style="width: auto; margin-top: 4px"
+              />
+              <span
+                >Prominent Seat<br /><span
+                  style="font-weight: normal; color: var(--text-muted)"
+                  >(ก้นงอน)</span
+                ></span
+              >
+            </label>
+            <label style="display: flex; align-items: flex-start; gap: 8px">
+              <input
+                type="checkbox"
+                id="meas-pant-chk-front-low"
+                style="width: auto; margin-top: 4px"
+              />
+              <span
+                >Front Low<br /><span
+                  style="font-weight: normal; color: var(--text-muted)"
+                  >(หน้าต่ำ)</span
+                ></span
+              >
+            </label>
+          </div>
+          <!-- Right Column -->
+          <div style="display: flex; flex-direction: column; gap: 12px">
+            <label style="display: flex; align-items: flex-start; gap: 8px">
+              <input
+                type="checkbox"
+                id="meas-pant-chk-male"
+                style="width: auto; margin-top: 4px"
+              />
+              <span
+                >Male<br /><span
+                  style="font-weight: normal; color: var(--text-muted)"
+                  >(ผู้ชาย)</span
+                ></span
+              >
+            </label>
+            <label style="display: flex; align-items: flex-start; gap: 8px">
+              <input
+                type="checkbox"
+                id="meas-pant-chk-female"
+                style="width: auto; margin-top: 4px"
+              />
+              <span
+                >Female<br /><span
+                  style="font-weight: normal; color: var(--text-muted)"
+                  >(ผู้หญิง)</span
+                ></span
+              >
+            </label>
+            <label style="display: flex; align-items: flex-start; gap: 8px">
+              <input
+                type="checkbox"
+                id="meas-pant-chk-front-thigh"
+                style="width: auto; margin-top: 4px"
+              />
+              <span
+                >Prominent Front Thigh<br /><span
+                  style="font-weight: normal; color: var(--text-muted)"
+                  >(มีหน้าขา)</span
+                ></span
+              >
+            </label>
+          </div>
         </div>
       </div>
 
@@ -587,7 +737,11 @@
         <div style="flex: 1">
           <h4
             id="meas-shirt-cat-sub-name"
-            style="margin: 0 0 8px 0; color: var(--text-primary); font-size: 18px"
+            style="
+              margin: 0 0 8px 0;
+              color: var(--text-primary);
+              font-size: 18px;
+            "
           >
             Category - Subcategory
           </h4>
@@ -598,21 +752,6 @@
             placeholder="Enter description..."
             style="width: 100%"
           ></textarea>
-        </div>
-      </div>
-
-      <!-- Gender -->
-      <div class="form-group">
-        <label>Gender <span class="required">*</span></label>
-        <div style="display: flex; gap: 16px">
-          <label
-            ><input type="radio" name="meas-shirt-gender" value="Man" checked />
-            Man</label
-          >
-          <label
-            ><input type="radio" name="meas-shirt-gender" value="Women" />
-            Women</label
-          >
         </div>
       </div>
 
@@ -676,21 +815,58 @@
       <!-- Characteristics checkboxes -->
       <div class="form-group">
         <label>Characteristics</label>
-        <div class="grid-4" style="gap: 8px">
+        <div class="grid-2" style="column-gap: 20px; row-gap: 8px">
           <label
-            ><input type="checkbox" id="meas-shirt-chk-shoulder-pour" />
-            Shoulder pour</label
+            ><input type="checkbox" id="meas-shirt-chk-sloping-shoulder" />
+            Sloping Shoulder (ไหล่เทา)</label
           >
           <label
-            ><input type="checkbox" id="meas-shirt-chk-curly" /> Curly
-            Butt</label
+            ><input type="checkbox" id="meas-shirt-chk-belly" /> Belly
+            (มีพุง)</label
           >
           <label
-            ><input type="checkbox" id="meas-shirt-chk-belly" /> Have
-            Belly</label
+            ><input type="checkbox" id="meas-shirt-chk-hunched-back" /> Hunched
+            Back (หลังค่อม)</label
           >
           <label
-            ><input type="checkbox" id="meas-shirt-chk-thick" /> Thick</label
+            ><input type="checkbox" id="meas-shirt-chk-male" /> Male
+            (ผู้ชาย)</label
+          >
+          <label
+            ><input type="checkbox" id="meas-shirt-chk-female" /> Female
+            (ผู้หญิง)</label
+          >
+          <label
+            ><input type="checkbox" id="meas-shirt-chk-pointed" /> Pointed (แหลม
+            (F))</label
+          >
+          <label
+            ><input type="checkbox" id="meas-shirt-chk-square" /> Square (ป้าน
+            (I))</label
+          >
+          <label
+            ><input type="checkbox" id="meas-shirt-chk-wide-square" /> Wide
+            Square (ป้าน (180))</label
+          >
+          <label
+            ><input type="checkbox" id="meas-shirt-chk-collar-roll" /> Collar
+            Roll (คุมใบปก)</label
+          >
+          <label
+            ><input type="checkbox" id="meas-shirt-chk-lapel-gorge" /> Lapel
+            Gorge (จุมไตปก)</label
+          >
+          <label
+            ><input type="checkbox" id="meas-shirt-chk-plain-back" /> Plain Back
+            (หลังเรียบ (X))</label
+          >
+          <label
+            ><input type="checkbox" id="meas-shirt-chk-center-pleat" /> Center
+            Pleat (จีบกลาง (TT))</label
+          >
+          <label
+            ><input type="checkbox" id="meas-shirt-chk-side-pleats" /> Side
+            Pleats (จีบข้าง (TT))</label
           >
         </div>
       </div>

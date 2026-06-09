@@ -204,12 +204,14 @@ const OrdersPage = (() => {
       document.getElementById("meas-front").value = "";
       document.getElementById("meas-back").value = "";
       document.getElementById("meas-neck").value = "";
-      document.getElementById("meas-chk-shoulder").checked = false;
-      document.getElementById("meas-chk-hunchback").checked = false;
+      document.getElementById("meas-chk-sloping-shoulder").checked = false;
+      document.getElementById("meas-chk-hunched-back").checked = false;
       document.getElementById("meas-chk-belly").checked = false;
-      document.getElementById("meas-chk-arched").checked = false;
-      document.querySelector('input[name="meas-gender"][value="Man"]').checked =
-        true;
+      document.getElementById("meas-chk-sway-back").checked = false;
+      document.getElementById("meas-chk-male").checked = false;
+      document.getElementById("meas-chk-female").checked = false;
+      document.getElementById("meas-chk-low-leg").checked = false;
+      document.getElementById("meas-chk-left-lower").checked = false;
       document.getElementById("meas-qty").value = "1";
       document.getElementById("meas-color").value = "";
       document.getElementById("meas-unit-price").value = "";
@@ -239,13 +241,12 @@ const OrdersPage = (() => {
       document.getElementById("meas-pant-shorts").value = "";
       document.getElementById("meas-pant-stomach").value = "";
       document.getElementById("meas-pant-skirt-length").value = "";
-      document.getElementById("meas-pant-chk-flat").checked = false;
-      document.getElementById("meas-pant-chk-curly").checked = false;
-      document.getElementById("meas-pant-chk-belly").checked = false;
-      document.getElementById("meas-pant-chk-thick").checked = false;
-      document.querySelector(
-        'input[name="meas-pant-gender"][value="Man"]',
-      ).checked = true;
+      document.getElementById("meas-pant-chk-flat-seat").checked = false;
+      document.getElementById("meas-pant-chk-prominent-seat").checked = false;
+      document.getElementById("meas-pant-chk-front-low").checked = false;
+      document.getElementById("meas-pant-chk-male").checked = false;
+      document.getElementById("meas-pant-chk-female").checked = false;
+      document.getElementById("meas-pant-chk-front-thigh").checked = false;
       document.getElementById("meas-pant-qty").value = "1";
       document.getElementById("meas-pant-color").value = "";
       document.getElementById("meas-pant-unit-price").value = "";
@@ -281,14 +282,20 @@ const OrdersPage = (() => {
       document.getElementById("meas-shirt-back").value = "";
       document.getElementById("meas-shirt-skirt-length").value = "";
 
-      document.getElementById("meas-shirt-chk-shoulder-pour").checked = false;
-      document.getElementById("meas-shirt-chk-curly").checked = false;
+      document.getElementById("meas-shirt-chk-sloping-shoulder").checked =
+        false;
       document.getElementById("meas-shirt-chk-belly").checked = false;
-      document.getElementById("meas-shirt-chk-thick").checked = false;
-
-      document.querySelector(
-        'input[name="meas-shirt-gender"][value="Man"]',
-      ).checked = true;
+      document.getElementById("meas-shirt-chk-hunched-back").checked = false;
+      document.getElementById("meas-shirt-chk-male").checked = false;
+      document.getElementById("meas-shirt-chk-female").checked = false;
+      document.getElementById("meas-shirt-chk-pointed").checked = false;
+      document.getElementById("meas-shirt-chk-square").checked = false;
+      document.getElementById("meas-shirt-chk-wide-square").checked = false;
+      document.getElementById("meas-shirt-chk-collar-roll").checked = false;
+      document.getElementById("meas-shirt-chk-lapel-gorge").checked = false;
+      document.getElementById("meas-shirt-chk-plain-back").checked = false;
+      document.getElementById("meas-shirt-chk-center-pleat").checked = false;
+      document.getElementById("meas-shirt-chk-side-pleats").checked = false;
       document.getElementById("meas-shirt-qty").value = "1";
       document.getElementById("meas-shirt-color").value = "";
       document.getElementById("meas-shirt-unit-price").value = "";
@@ -392,21 +399,18 @@ const OrdersPage = (() => {
     });
 
     const chks = [];
-    if (getChk("meas-pant-chk-flat")) chks.push("Flat buttom");
-    if (getChk("meas-pant-chk-curly")) chks.push("Curly Butt");
-    if (getChk("meas-pant-chk-belly")) chks.push("Have Belly");
-    if (getChk("meas-pant-chk-thick")) chks.push("Thick");
+    if (getChk("meas-pant-chk-flat-seat")) chks.push("Flat Seat");
+    if (getChk("meas-pant-chk-prominent-seat")) chks.push("Prominent Seat");
+    if (getChk("meas-pant-chk-front-low")) chks.push("Front Low");
+    if (getChk("meas-pant-chk-male")) chks.push("Male");
+    if (getChk("meas-pant-chk-female")) chks.push("Female");
+    if (getChk("meas-pant-chk-front-thigh")) chks.push("Prominent Front Thigh");
 
-    const genderElement = document.querySelector(
-      'input[name="meas-pant-gender"]:checked',
-    );
-    const gender = genderElement ? genderElement.value : "";
     const color = getVal("meas-pant-color");
     const desc = getVal("meas-pant-description");
 
     let customDesc = `${selectedCat.Name} – ${selectedSub.Name}`;
     if (desc) customDesc += ` | ${desc}`;
-    if (gender) customDesc += ` | ${gender}`;
     if (color) customDesc += ` | Color: ${color}`;
     if (m.length) customDesc += ` | Meas: ${m.join(", ")}`;
     if (chks.length) customDesc += ` | Traits: ${chks.join(", ")}`;
@@ -488,21 +492,33 @@ const OrdersPage = (() => {
     });
 
     const chks = [];
-    if (getChk("meas-shirt-chk-shoulder-pour")) chks.push("Shoulder pour");
-    if (getChk("meas-shirt-chk-curly")) chks.push("Curly Butt");
-    if (getChk("meas-shirt-chk-belly")) chks.push("Have Belly");
-    if (getChk("meas-shirt-chk-thick")) chks.push("Thick");
+    if (getChk("meas-shirt-chk-sloping-shoulder"))
+      chks.push("Sloping Shoulder (ไหล่เทา)");
+    if (getChk("meas-shirt-chk-belly")) chks.push("Belly (มีพุง)");
+    if (getChk("meas-shirt-chk-hunched-back"))
+      chks.push("Hunched Back (หลังค่อม)");
+    if (getChk("meas-shirt-chk-male")) chks.push("Male (ผู้ชาย)");
+    if (getChk("meas-shirt-chk-female")) chks.push("Female (ผู้หญิง)");
+    if (getChk("meas-shirt-chk-pointed")) chks.push("Pointed (แหลม (F))");
+    if (getChk("meas-shirt-chk-square")) chks.push("Square (ป้าน (I))");
+    if (getChk("meas-shirt-chk-wide-square"))
+      chks.push("Wide Square (ป้าน (180))");
+    if (getChk("meas-shirt-chk-collar-roll"))
+      chks.push("Collar Roll (คุมใบปก)");
+    if (getChk("meas-shirt-chk-lapel-gorge"))
+      chks.push("Lapel Gorge (จุมไตปก)");
+    if (getChk("meas-shirt-chk-plain-back"))
+      chks.push("Plain Back (หลังเรียบ (X))");
+    if (getChk("meas-shirt-chk-center-pleat"))
+      chks.push("Center Pleat (จีบกลาง (TT))");
+    if (getChk("meas-shirt-chk-side-pleats"))
+      chks.push("Side Pleats (จีบข้าง (TT))");
 
-    const genderElement = document.querySelector(
-      'input[name="meas-shirt-gender"]:checked',
-    );
-    const gender = genderElement ? genderElement.value : "";
     const color = getVal("meas-shirt-color");
     const desc = getVal("meas-shirt-description");
 
     let customDesc = `${selectedCat.Name} – ${selectedSub.Name}`;
     if (desc) customDesc += ` | ${desc}`;
-    if (gender) customDesc += ` | ${gender}`;
     if (color) customDesc += ` | Color: ${color}`;
     if (m.length) customDesc += ` | Meas: ${m.join(", ")}`;
     if (chks.length) customDesc += ` | Traits: ${chks.join(", ")}`;
@@ -570,20 +586,20 @@ const OrdersPage = (() => {
     });
 
     const chks = [];
-    if (getChk("meas-chk-shoulder")) chks.push("Shoulder tilt");
-    if (getChk("meas-chk-hunchback")) chks.push("Hunchback");
-    if (getChk("meas-chk-belly")) chks.push("Have Belly");
-    if (getChk("meas-chk-arched")) chks.push("Arched back");
+    if (getChk("meas-chk-sloping-shoulder")) chks.push("Sloping Shoulder");
+    if (getChk("meas-chk-hunched-back")) chks.push("Hunched Back");
+    if (getChk("meas-chk-belly")) chks.push("Belly");
+    if (getChk("meas-chk-sway-back")) chks.push("Sway Back");
+    if (getChk("meas-chk-male")) chks.push("Male");
+    if (getChk("meas-chk-female")) chks.push("Female");
+    if (getChk("meas-chk-low-leg")) chks.push("Low Leg");
+    if (getChk("meas-chk-left-lower")) chks.push("Left Side Lower");
 
-    const gender = document.querySelector(
-      'input[name="meas-gender"]:checked',
-    ).value;
     const color = getVal("meas-color");
     const desc = getVal("meas-description");
 
     let customDesc = `${selectedCat.Name} – ${selectedSub.Name}`;
     if (desc) customDesc += ` | ${desc}`;
-    if (gender) customDesc += ` | ${gender}`;
     if (color) customDesc += ` | Color: ${color}`;
     if (m.length) customDesc += ` | Meas: ${m.join(", ")}`;
     if (chks.length) customDesc += ` | Traits: ${chks.join(", ")}`;
