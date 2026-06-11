@@ -178,6 +178,7 @@ input[type="password"],
 input[type="email"],
 input[type="number"],
 input[type="date"],
+input[type="month"],
 select,
 textarea {
   width: 100%;
@@ -214,6 +215,12 @@ input[type="number"] {
 }
 input[type="number"]::-webkit-inner-spin-button {
   -webkit-appearance: none;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
 }
 
 select option {
@@ -566,6 +573,8 @@ textarea {
   border-radius: var(--radius-lg);
   padding: 20px;
   box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
 }
 
 .card-header {
@@ -642,7 +651,7 @@ textarea {
 .order-table-wrap {
   overflow-x: auto;
   overflow-y: auto;
-  max-height: 400px;
+  min-height: 200px;
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
   flex: 1;
@@ -671,6 +680,10 @@ table.data-table th {
   text-transform: uppercase;
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
+}
+
+table.data-table th.text-right {
+  text-align: right;
 }
 
 table.data-table td {

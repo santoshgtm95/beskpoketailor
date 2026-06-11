@@ -91,6 +91,14 @@ const OrdersPage = (() => {
     document
       .getElementById("btn-save-customer-inline")
       .addEventListener("click", saveCustomerInline);
+
+    // Live recalculate remaining balance when deposit or discount changes
+    document
+      .getElementById("order-deposit")
+      .addEventListener("input", updateRemainingBalance);
+    document
+      .getElementById("order-discount")
+      .addEventListener("input", updateRemainingBalance);
   }
 
   // ── Picker Steps ──────────────────────────────────────────────
@@ -672,6 +680,18 @@ const OrdersPage = (() => {
     document.getElementById("order-grand-total").textContent =
       fmtCurrency(total);
     document.getElementById("order-line-count").textContent = orderLines.length;
+    updateRemainingBalance();
+  }
+
+  function updateRemainingBalance() {
+    const total = orderLines.reduce((s, l) => s + l.LineTotal, 0);
+    const deposit =
+      parseFloat(document.getElementById("order-deposit").value) || 0;
+    const discount =
+      parseFloat(document.getElementById("order-discount").value) || 0;
+    const remaining = Math.max(0, total - deposit - discount);
+    document.getElementById("order-remaining-balance").textContent =
+      fmtCurrency(remaining);
   }
 
   async function saveOrder() {
@@ -695,6 +715,19 @@ const OrdersPage = (() => {
 
     const totalAmount = orderLines.reduce((s, l) => s + l.LineTotal, 0);
     const user = Auth.currentUser();
+    const paymentMethod =
+      document.querySelector('input[name="order-payment-method"]:checked')
+        ?.value || "Cash";
+    const deposit = +(
+      parseFloat(document.getElementById("order-deposit").value) || 0
+    ).toFixed(2);
+    const discount = +(
+      parseFloat(document.getElementById("order-discount").value) || 0
+    ).toFixed(2);
+    const remainingBalance = +Math.max(
+      0,
+      totalAmount - deposit - discount,
+    ).toFixed(2);
 
     try {
       let orderId;
@@ -705,6 +738,10 @@ const OrdersPage = (() => {
           CustomerID: custId,
           OrderDate: orderDate,
           TotalAmount: +totalAmount.toFixed(2),
+          PaymentMethod: paymentMethod,
+          Deposit: deposit,
+          Discount: discount,
+          RemainingBalance: remainingBalance,
         });
         await DB.orderlines.deleteByOrder(editingOrderId);
         orderId = editingOrderId;
@@ -714,6 +751,10 @@ const OrdersPage = (() => {
           UserID: user.UserID,
           OrderDate: orderDate,
           TotalAmount: +totalAmount.toFixed(2),
+          PaymentMethod: paymentMethod,
+          Deposit: deposit,
+          Discount: discount,
+          RemainingBalance: remainingBalance,
         });
       }
 
@@ -759,6 +800,11 @@ const OrdersPage = (() => {
     document.getElementById("order-date").value = todayStr();
     document.getElementById("item-qty").value = "1";
     document.getElementById("item-unit-price").value = "";
+    document.getElementById("order-deposit").value = "";
+    document.getElementById("order-discount").value = "";
+    document.getElementById("order-remaining-balance").textContent = "THB 0.00";
+    const cashRadio = document.getElementById("payment-cash");
+    if (cashRadio) cashRadio.checked = true;
 
     showStep("cat");
     renderOrderLines();
@@ -780,6 +826,14 @@ const OrdersPage = (() => {
     document.getElementById("customer-search").value = cust.Name;
     document.getElementById("customer-id-hidden").value = cust.CustomerID;
     document.getElementById("order-date").value = order.OrderDate;
+
+    // Restore payment fields
+    const pmRadio = document.querySelector(
+      `input[name="order-payment-method"][value="${order.PaymentMethod || "Cash"}"]`,
+    );
+    if (pmRadio) pmRadio.checked = true;
+    document.getElementById("order-deposit").value = order.Deposit || "";
+    document.getElementById("order-discount").value = order.Discount || "";
 
     orderLines = [];
     for (const l of lines) {
@@ -869,6 +923,7 @@ const OrdersPage = (() => {
   // ── Print receipt ──────────────────────────────────────────────
   async function printReceipt(orderId) {
     let printOrderLines, printCustomer, printTotal, printDate, printOrderId;
+    let printPaymentMethod, printDeposit, printDiscount, printRemainingBalance;
 
     if (orderId) {
       const order = await DB.orders.get(orderId);
@@ -877,6 +932,13 @@ const OrdersPage = (() => {
       printTotal = order.TotalAmount;
       printDate = order.OrderDate;
       printOrderId = order.OrderID;
+      printPaymentMethod = order.PaymentMethod || "Cash";
+      printDeposit = order.Deposit || 0;
+      printDiscount = order.Discount || 0;
+      printRemainingBalance =
+        order.RemainingBalance != null
+          ? order.RemainingBalance
+          : Math.max(0, printTotal - printDeposit - printDiscount);
     } else {
       return;
     }
@@ -914,9 +976,12 @@ const OrdersPage = (() => {
     </style>
     </head><body><div class="receipt-page">
     <div class="header">
-      <div>
-        <h1 class="brand">✂ SIAM BESPOKE</h1>
-        <div class="sub-brand">Tailor Shop</div>
+      <div style="display: flex; align-items: center; gap: 15px;">
+        <img src="${window.location.origin}/logo.png" style="width: 100px; height: 100px; object-fit: contain;" alt="Logo" />
+        <div>
+          <h1 class="brand">SIAM BESPOKE</h1>
+          <div class="sub-brand">Tailor Shop</div>
+        </div>
       </div>
       <div>
         <h2 class="invoice-title">Receipt</h2>
@@ -982,6 +1047,9 @@ const OrdersPage = (() => {
           <td colspan="3" class="text-right" style="padding-right: 16px;">ORDER TOTAL</td>
           <td class="text-right">${fmtCurrency(printTotal)}</td>
         </tr>
+        ${printDeposit > 0 ? `<tr style="font-size:13px;"><td colspan="3" class="text-right" style="padding-right:16px;border-bottom:none;padding-top:8px;">Deposit (${printPaymentMethod})</td><td class="text-right" style="border-bottom:none;padding-top:8px;">${fmtCurrency(printDeposit)}</td></tr>` : ""}
+        ${printDiscount > 0 ? `<tr style="font-size:13px;"><td colspan="3" class="text-right" style="padding-right:16px;border-bottom:none;padding-top:4px;">Discount</td><td class="text-right" style="border-bottom:none;padding-top:4px;">${fmtCurrency(printDiscount)}</td></tr>` : ""}
+        ${printDeposit > 0 || printDiscount > 0 ? `<tr style="font-weight:700;font-size:16px;border-top:2px solid #111;"><td colspan="3" class="text-right" style="padding-right:16px;padding-top:14px;border-bottom:none;">REMAINING BALANCE</td><td class="text-right" style="padding-top:14px;border-bottom:none;">${fmtCurrency(printRemainingBalance)}</td></tr>` : ""}
       </tfoot>
     </table>
     
@@ -1162,6 +1230,14 @@ const OrdersPage = (() => {
       total += l.LineTotal;
     }
 
+    const deposit = order.Deposit || 0;
+    const discount = order.Discount || 0;
+    const remaining =
+      order.RemainingBalance != null
+        ? order.RemainingBalance
+        : Math.max(0, total - deposit - discount);
+    const paymentMethod = order.PaymentMethod || "Cash";
+
     document.getElementById("view-order-content").innerHTML = `
       <div class="grid-2 mb-3" style="background: var(--bg-panel); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border);">
         <div>
@@ -1181,9 +1257,27 @@ const OrdersPage = (() => {
           <tbody>${linesHtml}</tbody>
         </table>
       </div>
-      <div class="order-total-bar" style="margin-top: 16px; display: flex; justify-content: space-between; align-items: center; padding: 16px; background: var(--bg-panel); border-radius: var(--radius-md); border: 1px solid var(--border);">
-        <div class="total-label" style="font-size:16px; font-weight:bold;">ORDER TOTAL</div>
-        <div class="total-amount" style="font-size:22px; font-weight:bold; color: var(--text-primary);">${fmtCurrency(total)}</div>
+      <div style="margin-top: 16px; background: var(--bg-panel); border-radius: var(--radius-md); border: 1px solid var(--border); overflow: hidden;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border);">
+          <div style="font-size:16px;font-weight:bold;">ORDER TOTAL</div>
+          <div style="font-size:22px;font-weight:bold;">${fmtCurrency(total)}</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);">
+          <div style="font-size:13px;color:var(--text-secondary);">Payment Method</div>
+          <div style="font-size:13px;font-weight:600;">${sanitize(paymentMethod)}</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);">
+          <div style="font-size:13px;color:var(--text-secondary);">Paid Amount</div>
+          <div style="font-size:13px;font-weight:600;">${fmtCurrency(deposit)}</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);">
+          <div style="font-size:13px;color:var(--text-secondary);">Discount</div>
+          <div style="font-size:13px;font-weight:600;">${fmtCurrency(discount)}</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;background:var(--bg-surface);">
+          <div style="font-size:15px;font-weight:bold;">REMAINING BALANCE</div>
+          <div style="font-size:20px;font-weight:bold;color:var(--gold-light);">${fmtCurrency(remaining)}</div>
+        </div>
       </div>
       <div class="flex gap-2 mt-3" style="justify-content: flex-end;">
         <button class="btn btn-primary btn-sm" onclick="OrdersPage.editFromView(${orderId})">✏️ Edit Order</button>

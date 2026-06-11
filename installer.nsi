@@ -56,6 +56,7 @@ Section "Install"
   File "index.html"
   File "server.js"
   File "package.json"
+  File "logo.png"
   
   ; Copy pre-installed node_modules
   SetOutPath "$INSTDIR\node_modules"

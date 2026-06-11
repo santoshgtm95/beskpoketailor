@@ -14,6 +14,7 @@ const AppShell = (() => {
       label: "Order History",
       section: "main",
     },
+    { id: "report", icon: "📊", label: "Report", section: "main" },
     { id: "customers", icon: "👥", label: "Customers", section: "manage" },
     { id: "catalog", icon: "🧵", label: "Catalog", section: "manage" },
     {
@@ -102,6 +103,9 @@ const AppShell = (() => {
       case "order-history":
         await OrdersPage.loadHistory();
         break;
+      case "report":
+        await ReportView.init();
+        break;
       case "customers":
         await CustomersPage.load();
         break;
@@ -180,6 +184,7 @@ const AppShell = (() => {
       { id: "page-dashboard-placeholder", url: "views/dashboard.html" },
       { id: "page-order-entry-placeholder", url: "views/order-entry.html" },
       { id: "page-order-history-placeholder", url: "views/order-history.html" },
+      { id: "page-report-placeholder", url: "views/report.html" },
       { id: "page-customers-placeholder", url: "views/customers.html" },
       { id: "page-catalog-placeholder", url: "views/catalog.html" },
       { id: "page-users-placeholder", url: "views/users.html" },

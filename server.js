@@ -233,6 +233,10 @@ async function initDb() {
       UserID INTEGER NOT NULL,
       OrderDate TEXT NOT NULL,
       TotalAmount REAL NOT NULL,
+      PaymentMethod TEXT DEFAULT 'Cash',
+      Deposit REAL DEFAULT 0,
+      Discount REAL DEFAULT 0,
+      RemainingBalance REAL DEFAULT 0,
       FOREIGN KEY (CustomerID) REFERENCES customers(CustomerID) ON DELETE RESTRICT,
       FOREIGN KEY (UserID) REFERENCES users(UserID) ON DELETE RESTRICT
     )
@@ -252,6 +256,21 @@ async function initDb() {
       FOREIGN KEY (OrderID) REFERENCES orders(OrderID) ON DELETE CASCADE
     )
   `);
+
+  // Migrate orders table: add payment/deposit/discount columns if not present
+  const orderMigrations = [
+    "ALTER TABLE orders ADD COLUMN PaymentMethod TEXT DEFAULT 'Cash'",
+    "ALTER TABLE orders ADD COLUMN Deposit REAL DEFAULT 0",
+    "ALTER TABLE orders ADD COLUMN Discount REAL DEFAULT 0",
+    "ALTER TABLE orders ADD COLUMN RemainingBalance REAL DEFAULT 0",
+  ];
+  for (const sql of orderMigrations) {
+    try {
+      await dbRun(sql);
+    } catch (e) {
+      /* column already exists */
+    }
+  }
 
   // Migrate existing databases: add new columns if not present
   const migrations = [
@@ -783,7 +802,16 @@ app.get("/api/orders/:id", async (req, res) => {
 });
 
 app.post("/api/orders", async (req, res) => {
-  const { CustomerID, UserID, OrderDate, TotalAmount } = req.body;
+  const {
+    CustomerID,
+    UserID,
+    OrderDate,
+    TotalAmount,
+    PaymentMethod,
+    Deposit,
+    Discount,
+    RemainingBalance,
+  } = req.body;
   if (!CustomerID || !UserID || !OrderDate || TotalAmount === undefined) {
     return res.status(400).json({
       message: "CustomerID, UserID, OrderDate, and TotalAmount are required",
@@ -791,8 +819,17 @@ app.post("/api/orders", async (req, res) => {
   }
   try {
     const result = await dbRun(
-      "INSERT INTO orders (CustomerID, UserID, OrderDate, TotalAmount) VALUES (?, ?, ?, ?)",
-      [CustomerID, UserID, OrderDate, TotalAmount],
+      "INSERT INTO orders (CustomerID, UserID, OrderDate, TotalAmount, PaymentMethod, Deposit, Discount, RemainingBalance) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      [
+        CustomerID,
+        UserID,
+        OrderDate,
+        TotalAmount,
+        PaymentMethod || "Cash",
+        Deposit || 0,
+        Discount || 0,
+        RemainingBalance || 0,
+      ],
     );
     res.status(201).json(result.id);
   } catch (err) {
@@ -801,7 +838,16 @@ app.post("/api/orders", async (req, res) => {
 });
 
 app.put("/api/orders/:id", async (req, res) => {
-  const { CustomerID, UserID, OrderDate, TotalAmount } = req.body;
+  const {
+    CustomerID,
+    UserID,
+    OrderDate,
+    TotalAmount,
+    PaymentMethod,
+    Deposit,
+    Discount,
+    RemainingBalance,
+  } = req.body;
   if (!CustomerID || !UserID || !OrderDate || TotalAmount === undefined) {
     return res.status(400).json({
       message: "CustomerID, UserID, OrderDate, and TotalAmount are required",
@@ -809,8 +855,18 @@ app.put("/api/orders/:id", async (req, res) => {
   }
   try {
     const result = await dbRun(
-      "UPDATE orders SET CustomerID = ?, UserID = ?, OrderDate = ?, TotalAmount = ? WHERE OrderID = ?",
-      [CustomerID, UserID, OrderDate, TotalAmount, req.params.id],
+      "UPDATE orders SET CustomerID = ?, UserID = ?, OrderDate = ?, TotalAmount = ?, PaymentMethod = ?, Deposit = ?, Discount = ?, RemainingBalance = ? WHERE OrderID = ?",
+      [
+        CustomerID,
+        UserID,
+        OrderDate,
+        TotalAmount,
+        PaymentMethod || "Cash",
+        Deposit || 0,
+        Discount || 0,
+        RemainingBalance || 0,
+        req.params.id,
+      ],
     );
     if (result.changes === 0)
       return res.status(404).json({ message: "Order not found" });
