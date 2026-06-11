@@ -15,6 +15,7 @@ InstallDir "C:\SiamBespoke"
 RequestExecutionLevel admin
 
 ; MUI Settings
+!define MUI_ICON "logo.ico"
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
@@ -73,12 +74,16 @@ Section "Install"
   
   DoneNode:
   
+  ; Set icon OutPath
+  SetOutPath "$INSTDIR"
+  File "logo.ico"
+
   ; Create Desktop shortcut pointing to batch file
-  CreateShortCut "$DESKTOP\Siam Bespoke Tailor.lnk" "$INSTDIR\beskpoke.bat" "" "$INSTDIR\beskpoke.bat" 0
+  CreateShortCut "$DESKTOP\Siam Bespoke Tailor.lnk" "$INSTDIR\beskpoke.bat" "" "$INSTDIR\logo.ico" 0
   
   ; Create Start Menu folder and shortcuts
   CreateDirectory "$SMPROGRAMS\Siam Bespoke Tailor"
-  CreateShortCut "$SMPROGRAMS\Siam Bespoke Tailor\Siam Bespoke Tailor.lnk" "$INSTDIR\beskpoke.bat" "" "$INSTDIR\beskpoke.bat" 0
+  CreateShortCut "$SMPROGRAMS\Siam Bespoke Tailor\Siam Bespoke Tailor.lnk" "$INSTDIR\beskpoke.bat" "" "$INSTDIR\logo.ico" 0
   CreateShortCut "$SMPROGRAMS\Siam Bespoke Tailor\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\uninstall.exe" 0
   
   ; Create uninstaller
@@ -87,7 +92,7 @@ Section "Install"
   ; Register uninstaller in Windows
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\SiamBespokeTailor" "DisplayName" "Siam Bespoke Tailor"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\SiamBespokeTailor" "UninstallString" "$INSTDIR\uninstall.exe"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\SiamBespokeTailor" "DisplayIcon" "$INSTDIR\beskpoke.bat"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\SiamBespokeTailor" "DisplayIcon" "$INSTDIR\logo.ico"
   
 SectionEnd
 
