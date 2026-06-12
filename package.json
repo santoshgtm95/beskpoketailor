@@ -25,6 +25,7 @@
     "outputPath": "bin"
   },
   "dependencies": {
+    "adm-zip": "^0.5.17",
     "archiver": "^7.0.1",
     "cors": "^2.8.6",
     "express": "^5.2.1",

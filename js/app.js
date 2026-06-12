@@ -234,6 +234,63 @@ const AppShell = (() => {
     }
   }
 
+  async function handleRestore() {
+    const fileInput = document.getElementById("restore-file-input");
+    if (!fileInput) {
+      if (typeof Toast !== "undefined")
+        Toast.error("Restore control not found.");
+      return;
+    }
+
+    const selectedFile = await new Promise((resolve) => {
+      fileInput.value = "";
+      fileInput.onchange = () => resolve(fileInput.files?.[0] || null);
+      fileInput.click();
+    });
+
+    if (!selectedFile) return;
+
+    const ok = await Confirm.show(
+      "Restore this backup zip? Current database and images will be overwritten.",
+      "Restore Backup",
+    );
+    if (!ok) return;
+
+    const btn = document.getElementById("btn-restore");
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Restoring…';
+
+    try {
+      const formData = new FormData();
+      formData.append("backupFile", selectedFile);
+
+      const response = await fetch("/api/restore", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.message || "Restore failed.");
+      }
+
+      if (typeof Toast !== "undefined") {
+        Toast.success("Restore completed successfully.");
+      }
+
+      await navigate("dashboard", true);
+    } catch (err) {
+      console.error("Restore error:", err);
+      if (typeof Toast !== "undefined") {
+        Toast.error("Restore failed: " + err.message);
+      }
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
+  }
+
   // ── Init ───────────────────────────────────────────────────────
   async function init() {
     await DB.init();
@@ -289,6 +346,12 @@ const AppShell = (() => {
     const backupBtn = document.getElementById("btn-backup");
     if (backupBtn) {
       backupBtn.addEventListener("click", handleBackup);
+    }
+
+    // Restore button
+    const restoreBtn = document.getElementById("btn-restore");
+    if (restoreBtn) {
+      restoreBtn.addEventListener("click", handleRestore);
     }
 
     // Confirm modal buttons

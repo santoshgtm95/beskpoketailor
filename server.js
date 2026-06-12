@@ -11,6 +11,7 @@ const multer = require("multer");
 const fs = require("fs");
 const { spawn } = require("child_process");
 const archiver = require("archiver");
+const AdmZip = require("adm-zip");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -75,6 +76,15 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
+const restoreUploadDir = path.join(DATA_DIR, "restore-upload-temp");
+if (!fs.existsSync(restoreUploadDir)) {
+  fs.mkdirSync(restoreUploadDir, { recursive: true });
+}
+const restoreUpload = multer({
+  dest: restoreUploadDir,
+  limits: { fileSize: 500 * 1024 * 1024 },
+});
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -115,28 +125,67 @@ function handleSqlError(res, err, context) {
 
 // Database setup
 const dbPath = path.join(DATA_DIR, "beskpoke.db");
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error("Error opening SQLite database:", err.message);
-  } else {
-    console.log("Connected to SQLite database at:", dbPath);
-    // Copy existing db if it exists in __dirname but not in DATA_DIR
-    const localDb = path.join(__dirname, "beskpoke.db");
-    if (
-      DATA_DIR !== __dirname &&
-      fs.existsSync(localDb) &&
-      !fs.existsSync(dbPath)
-    ) {
-      try {
-        fs.copyFileSync(localDb, dbPath);
-        console.log("Migrated local database to:", dbPath);
-      } catch (migrateErr) {
-        console.error("Migration failed:", migrateErr.message);
+let db = null;
+
+function openDatabase(runInit = true) {
+  return new Promise((resolve, reject) => {
+    db = new sqlite3.Database(dbPath, (err) => {
+      if (err) {
+        console.error("Error opening SQLite database:", err.message);
+        reject(err);
+        return;
       }
+
+      console.log("Connected to SQLite database at:", dbPath);
+      if (!runInit) {
+        resolve();
+        return;
+      }
+
+      initDb()
+        .then(resolve)
+        .catch((initErr) => {
+          console.error("Database initialization error:", initErr.message);
+          reject(initErr);
+        });
+    });
+  });
+}
+
+function closeDatabase() {
+  return new Promise((resolve, reject) => {
+    if (!db) {
+      resolve();
+      return;
     }
-    initDb().catch(console.error);
+
+    db.close((err) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      db = null;
+      resolve();
+    });
+  });
+}
+
+// Copy existing db if it exists in __dirname but not in DATA_DIR
+const localDb = path.join(__dirname, "beskpoke.db");
+if (
+  DATA_DIR !== __dirname &&
+  fs.existsSync(localDb) &&
+  !fs.existsSync(dbPath)
+) {
+  try {
+    fs.copyFileSync(localDb, dbPath);
+    console.log("Migrated local database to:", dbPath);
+  } catch (migrateErr) {
+    console.error("Migration failed:", migrateErr.message);
   }
-});
+}
+
+openDatabase(true).catch(console.error);
 
 // Helper functions for Promise-based db operations
 const dbRun = (sql, params = []) =>
@@ -1197,7 +1246,7 @@ function cleanupOldBackups(backupDir, keepCount) {
   try {
     const files = fs
       .readdirSync(backupDir)
-      .filter((f) => f.startsWith("backup-") && f.endsWith(".zip"))
+      .filter((f) => f.endsWith("_backup.zip") || f.startsWith("backup-"))
       .map((f) => ({
         name: f,
         time: fs.statSync(path.join(backupDir, f)).mtime.getTime(),
@@ -1213,6 +1262,98 @@ function cleanupOldBackups(backupDir, keepCount) {
     console.warn("Cleanup error:", err.message);
   }
 }
+
+async function restoreDatabaseFromBackup(backupDbPath) {
+  await closeDatabase();
+  fs.copyFileSync(backupDbPath, dbPath);
+  await openDatabase(false);
+  await dbRun("PRAGMA foreign_keys = ON;");
+}
+
+function clearDirectory(dir) {
+  if (!fs.existsSync(dir)) return;
+  for (const entry of fs.readdirSync(dir)) {
+    const entryPath = path.join(dir, entry);
+    const stat = fs.statSync(entryPath);
+    if (stat.isDirectory()) {
+      fs.rmSync(entryPath, { recursive: true, force: true });
+    } else {
+      fs.unlinkSync(entryPath);
+    }
+  }
+}
+
+function copyDirectoryContents(srcDir, destDir) {
+  if (!fs.existsSync(srcDir)) return;
+  if (!fs.existsSync(destDir)) {
+    fs.mkdirSync(destDir, { recursive: true });
+  }
+
+  for (const entry of fs.readdirSync(srcDir)) {
+    const srcPath = path.join(srcDir, entry);
+    const destPath = path.join(destDir, entry);
+    const stat = fs.statSync(srcPath);
+
+    if (stat.isDirectory()) {
+      copyDirectoryContents(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}
+
+app.post(
+  "/api/restore",
+  restoreUpload.single("backupFile"),
+  async (req, res) => {
+    let extractedDir = null;
+
+    try {
+      if (!req.file) {
+        return res
+          .status(400)
+          .json({ message: "Backup zip file is required." });
+      }
+
+      extractedDir = path.join(DATA_DIR, `restore-temp-${Date.now()}`);
+      fs.mkdirSync(extractedDir, { recursive: true });
+
+      const zip = new AdmZip(req.file.path);
+      zip.extractAllTo(extractedDir, true);
+
+      const restoredDbPath = path.join(extractedDir, "beskpoke.db");
+      if (!fs.existsSync(restoredDbPath)) {
+        return res.status(400).json({
+          message: "Invalid backup zip. beskpoke.db was not found.",
+        });
+      }
+
+      await restoreDatabaseFromBackup(restoredDbPath);
+
+      const restoredUploadsDir = path.join(extractedDir, "uploads");
+      if (fs.existsSync(restoredUploadsDir)) {
+        clearDirectory(uploadDir);
+        copyDirectoryContents(restoredUploadsDir, uploadDir);
+      }
+
+      res.json({ success: true, message: "Backup restored successfully." });
+    } catch (err) {
+      console.error("Restore error:", err);
+      res.status(500).json({ message: err.message || "Restore failed." });
+    } finally {
+      try {
+        if (req.file?.path && fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
+        if (extractedDir && fs.existsSync(extractedDir)) {
+          fs.rmSync(extractedDir, { recursive: true, force: true });
+        }
+      } catch (cleanupErr) {
+        console.warn("Restore cleanup warning:", cleanupErr.message);
+      }
+    }
+  },
+);
 
 // Catch-all route to serve index.html for UI SPA routing, if any
 app.get(/^(?!\/api).*/, (req, res) => {
