@@ -14,6 +14,7 @@ const AppShell = (() => {
       label: "Order History",
       section: "main",
     },
+    { id: "report", icon: "📊", label: "Report", section: "main" },
     { id: "customers", icon: "👥", label: "Customers", section: "manage" },
     { id: "catalog", icon: "🧵", label: "Catalog", section: "manage" },
     {
@@ -102,6 +103,9 @@ const AppShell = (() => {
       case "order-history":
         await OrdersPage.loadHistory();
         break;
+      case "report":
+        await ReportView.init();
+        break;
       case "customers":
         await CustomersPage.load();
         break;
@@ -170,6 +174,66 @@ const AppShell = (() => {
     _currentPage = null;
   }
 
+  async function handleBackup() {
+    const ok = await Confirm.show(
+      "Create a backup of all database and images?",
+      "Backup",
+    );
+    if (!ok) return;
+
+    const btn = document.getElementById("btn-backup");
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Creating backup…';
+
+    try {
+      const response = await fetch("/api/backup");
+      if (!response.ok) {
+        throw new Error(`Backup failed: ${response.statusText}`);
+      }
+
+      // Get filename from Content-Disposition header; fallback to local timestamp format.
+      const contentDisposition = response.headers.get("content-disposition");
+      const now = new Date();
+      const pad2 = (n) => String(n).padStart(2, "0");
+      let filename = `${now.getFullYear()}${pad2(now.getMonth() + 1)}${pad2(now.getDate())}${pad2(now.getHours())}${pad2(now.getMinutes())}${pad2(now.getSeconds())}_backup.zip`;
+
+      if (contentDisposition) {
+        const utf8Match = /filename\*=UTF-8''([^;]+)/i.exec(contentDisposition);
+        const plainMatch = /filename="?([^";]+)"?/i.exec(contentDisposition);
+
+        if (utf8Match && utf8Match[1]) {
+          filename = decodeURIComponent(utf8Match[1]);
+        } else if (plainMatch && plainMatch[1]) {
+          filename = plainMatch[1].trim();
+        }
+      }
+
+      // Create blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      if (typeof Toast !== "undefined") {
+        Toast.success("Backup created and downloaded successfully!");
+      }
+    } catch (err) {
+      console.error("Backup error:", err);
+      if (typeof Toast !== "undefined") {
+        Toast.error("Backup failed: " + err.message);
+      }
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
+  }
+
   // ── Init ───────────────────────────────────────────────────────
   async function init() {
     await DB.init();
@@ -180,6 +244,7 @@ const AppShell = (() => {
       { id: "page-dashboard-placeholder", url: "views/dashboard.html" },
       { id: "page-order-entry-placeholder", url: "views/order-entry.html" },
       { id: "page-order-history-placeholder", url: "views/order-history.html" },
+      { id: "page-report-placeholder", url: "views/report.html" },
       { id: "page-customers-placeholder", url: "views/customers.html" },
       { id: "page-catalog-placeholder", url: "views/catalog.html" },
       { id: "page-users-placeholder", url: "views/users.html" },
@@ -219,6 +284,12 @@ const AppShell = (() => {
     document
       .querySelectorAll(".btn-logout")
       .forEach((b) => b.addEventListener("click", handleLogout));
+
+    // Backup button
+    const backupBtn = document.getElementById("btn-backup");
+    if (backupBtn) {
+      backupBtn.addEventListener("click", handleBackup);
+    }
 
     // Confirm modal buttons
     document

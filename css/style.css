@@ -7,36 +7,36 @@
 
 /* ── CSS Variables ─────────────────────────────────────────── */
 :root {
-  --bg-deep: #ffffff;
-  --bg-card: #ffffff;
-  --bg-panel: #f9f9f9;
-  --bg-surface: #f2f2f2;
-  --bg-hover: #e5e5e5;
-  --bg-input: #ffffff;
+  --bg-deep: #061e3e;
+  --bg-card: #0a284c;
+  --bg-panel: #082142;
+  --bg-surface: #0b2b52;
+  --bg-hover: #103463;
+  --bg-input: #04162e;
 
-  --gold: #333333;
-  --gold-light: #555555;
-  --gold-dark: #111111;
-  --gold-glow: rgba(0, 0, 0, 0.05);
-  --gold-border: #cccccc;
+  --gold: #dcb360;
+  --gold-light: #f2ce8a;
+  --gold-dark: #b89145;
+  --gold-glow: rgba(220, 179, 96, 0.2);
+  --gold-border: rgba(220, 179, 96, 0.4);
 
-  --text-primary: #111111;
-  --text-secondary: #444444;
-  --text-muted: #666666;
-  --text-gold: #111111;
+  --text-primary: #ffffff;
+  --text-secondary: #e0e0e0;
+  --text-muted: #aeb6c4;
+  --text-gold: #dcb360;
 
-  --accent-blue: #333333;
-  --accent-green: #333333;
-  --accent-red: #333333;
-  --accent-amber: #333333;
+  --accent-blue: #5baaff;
+  --accent-green: #41d188;
+  --accent-red: #ff6b6b;
+  --accent-amber: #fca83e;
 
-  --border: #dddddd;
-  --border-gold: #bbbbbb;
+  --border: rgba(255, 255, 255, 0.1);
+  --border-gold: rgba(220, 179, 96, 0.6);
 
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.12);
-  --shadow-gold: 0 0 30px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 10px 40px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.4);
+  --shadow-gold: 0 0 30px rgba(220, 179, 96, 0.15);
 
   --radius-sm: 6px;
   --radius-md: 8px;
@@ -178,6 +178,7 @@ input[type="password"],
 input[type="email"],
 input[type="number"],
 input[type="date"],
+input[type="month"],
 select,
 textarea {
   width: 100%;
@@ -214,6 +215,12 @@ input[type="number"] {
 }
 input[type="number"]::-webkit-inner-spin-button {
   -webkit-appearance: none;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
 }
 
 select option {
@@ -262,39 +269,43 @@ textarea {
 }
 
 .btn-gold {
-  background: #222222;
-  color: #ffffff;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+  color: #03152d;
+  box-shadow: var(--shadow-sm);
 }
 .btn-gold:hover {
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-gold);
+  transform: translateY(-1px);
 }
 
 .btn-primary {
-  background: #333333;
+  background: var(--accent-blue);
   color: #fff;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
 }
 .btn-primary:hover {
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-md);
+  filter: brightness(1.1);
 }
 
 .btn-success {
-  background: #333333;
+  background: var(--accent-green);
   color: #fff;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
 }
 .btn-success:hover {
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-md);
+  filter: brightness(1.1);
 }
 
 .btn-danger {
-  background: #555555;
+  background: var(--accent-red);
   color: #fff;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
 }
 .btn-danger:hover {
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-md);
+  filter: brightness(1.1);
 }
 
 .btn-ghost {
@@ -443,7 +454,7 @@ textarea {
 .nav-item .nav-badge {
   margin-left: auto;
   background: var(--gold);
-  color: #1a0f00;
+  color: #03152d;
   font-size: 10px;
   font-weight: 700;
   padding: 1px 6px;
@@ -469,13 +480,13 @@ textarea {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: #333333;
+  background: var(--gold);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 14px;
   font-weight: 700;
-  color: #ffffff;
+  color: #03152d;
   flex-shrink: 0;
 }
 
@@ -562,6 +573,8 @@ textarea {
   border-radius: var(--radius-lg);
   padding: 20px;
   box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
 }
 
 .card-header {
@@ -638,7 +651,7 @@ textarea {
 .order-table-wrap {
   overflow-x: auto;
   overflow-y: auto;
-  max-height: 400px;
+  min-height: 200px;
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
   flex: 1;
@@ -651,7 +664,7 @@ table.data-table {
 }
 
 table.data-table thead {
-  background: #333333;
+  background: var(--bg-hover);
   position: sticky;
   top: 0;
   z-index: 1;
@@ -662,11 +675,15 @@ table.data-table th {
   text-align: left;
   font-size: 14px;
   font-weight: 600;
-  color: #ffffff;
+  color: var(--text-primary);
   letter-spacing: 0.8px;
   text-transform: uppercase;
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
+}
+
+table.data-table th.text-right {
+  text-align: right;
 }
 
 table.data-table td {
@@ -799,19 +816,19 @@ table.data-table tbody tr:last-child td {
   border: 1px solid var(--gold-border);
 }
 .badge-green {
-  background: rgba(62, 207, 142, 0.12);
-  color: #3ecf8e;
-  border: 1px solid rgba(62, 207, 142, 0.2);
+  background: rgba(65, 209, 136, 0.12);
+  color: var(--accent-green);
+  border: 1px solid rgba(65, 209, 136, 0.2);
 }
 .badge-blue {
-  background: rgba(74, 158, 255, 0.12);
-  color: #4a9eff;
-  border: 1px solid rgba(74, 158, 255, 0.2);
+  background: rgba(91, 170, 255, 0.12);
+  color: var(--accent-blue);
+  border: 1px solid rgba(91, 170, 255, 0.2);
 }
 .badge-red {
-  background: rgba(239, 68, 68, 0.12);
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  background: rgba(255, 107, 107, 0.12);
+  color: var(--accent-red);
+  border: 1px solid rgba(255, 107, 107, 0.2);
 }
 
 /* ── Search & Filters ──────────────────────────────────────── */
@@ -1563,25 +1580,6 @@ mark {
 }
 
 /* ── Scoped Overrides for New Order page (#page-order-entry) ── */
-#page-order-entry,
-#page-order-entry *,
-#page-order-entry input,
-#page-order-entry select,
-#page-order-entry textarea,
-#page-order-entry .text-gold,
-#page-order-entry .text-muted,
-#page-order-entry .badge,
-#page-order-entry .total-amount,
-#page-order-entry .total-label,
-#page-order-entry .picker-summary-sub,
-#page-order-entry .picker-summary-cat,
-#page-order-entry .picker-cat-sub,
-#page-order-entry .picker-cat-name,
-#page-order-entry .picker-sub-name,
-#page-order-entry .autocomplete-dropdown div {
-  color: #111 !important;
-}
-
 /* Base override for other text to 13px */
 #page-order-entry,
 #page-order-entry input,
@@ -1611,12 +1609,5 @@ mark {
 }
 
 #page-order-entry th {
-  color: #ffffff !important;
-}
-
-#page-order-entry .btn-gold,
-#page-order-entry .btn-primary,
-#page-order-entry .btn-success,
-#page-order-entry .btn-danger {
-  color: #ffffff !important;
+  color: var(--text-primary) !important;
 }

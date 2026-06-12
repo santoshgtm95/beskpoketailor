@@ -1,0 +1,157 @@
+<div class="page" id="page-report">
+  <div class="page-header">
+    <div class="header-content">
+      <h2>Reports</h2>
+      <p class="text-secondary">Sales and Revenue Reports</p>
+    </div>
+  </div>
+
+  <div class="page-content">
+    <!-- Filters -->
+    <div class="card mb-3">
+      <div class="card-header pb-0 border-0">
+        <h3 class="card-title">Report Filters</h3>
+      </div>
+      <div class="card-body">
+        <div
+          class="filter-row"
+          style="display: flex; gap: 1.5rem; align-items: flex-end"
+        >
+          <div class="form-group mb-0">
+            <label style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.8; font-weight: 600; margin-bottom: 6px; display: block;">Filter By</label>
+            <select
+              id="report-filter-type"
+              class="form-control"
+              onchange="ReportView.onFilterTypeChange()"
+              style="min-width: 140px"
+            >
+              <option value="daily">Daily</option>
+              <option value="monthly" selected>Monthly</option>
+              <option value="yearly">Yearly</option>
+            </select>
+          </div>
+
+          <!-- Daily Filter -->
+          <div
+            class="form-group mb-0"
+            id="report-daily-filter"
+            style="display: none"
+          >
+            <label style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.8; font-weight: 600; margin-bottom: 6px; display: block;">Date</label>
+            <input
+              type="date"
+              id="report-date"
+              class="form-control"
+              onchange="ReportView.loadData()"
+              style="min-width: 200px"
+            />
+          </div>
+
+          <!-- Monthly Filter -->
+          <div class="form-group mb-0" id="report-monthly-filter">
+            <label style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.8; font-weight: 600; margin-bottom: 6px; display: block;">Month</label>
+            <input
+              type="month"
+              id="report-month"
+              class="form-control"
+              onchange="ReportView.loadData()"
+              style="min-width: 200px"
+            />
+          </div>
+
+          <!-- Yearly Filter -->
+          <div
+            class="form-group mb-0"
+            id="report-yearly-filter"
+            style="display: none"
+          >
+            <label style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.8; font-weight: 600; margin-bottom: 6px; display: block;">Year</label>
+            <input
+              type="number"
+              id="report-year"
+              class="form-control"
+              onchange="ReportView.loadData()"
+              min="2000"
+              max="2100"
+              style="min-width: 200px"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="stats-row mb-3">
+      <div class="stat-card flex-1">
+        <div class="stat-icon blue">📋</div>
+        <div class="stat-info">
+          <div class="stat-value" id="report-total-orders">0</div>
+          <div class="stat-label">Total Sell Reports</div>
+        </div>
+      </div>
+      <div class="stat-card flex-1">
+        <div class="stat-icon gold">💰</div>
+        <div class="stat-info">
+          <div class="stat-value" id="report-total-revenue">$0.00</div>
+          <div class="stat-label">Total Revenue</div>
+        </div>
+      </div>
+      <div class="stat-card flex-1">
+        <div class="stat-icon" style="color: var(--accent-green)">🧵</div>
+        <div class="stat-info">
+          <div class="stat-value" id="report-total-items">0</div>
+          <div class="stat-label">Total Items Sold</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="stats-row mb-3">
+      <div class="stat-card flex-1">
+        <div class="stat-icon" style="color: var(--accent-amber)">🧥</div>
+        <div class="stat-info">
+          <div class="stat-value" id="report-total-jackets">0</div>
+          <div class="stat-label">Jackets Sold</div>
+        </div>
+      </div>
+      <div class="stat-card flex-1">
+        <div class="stat-icon" style="color: var(--accent-blue)">👖</div>
+        <div class="stat-info">
+          <div class="stat-value" id="report-total-pants">0</div>
+          <div class="stat-label">Pants Sold</div>
+        </div>
+      </div>
+      <div class="stat-card flex-1">
+        <div class="stat-icon" style="color: var(--accent-red)">👔</div>
+        <div class="stat-info">
+          <div class="stat-value" id="report-total-shirts">0</div>
+          <div class="stat-label">Shirts Sold</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Details Table -->
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Order Details</h3>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Date</th>
+                <th>Customer</th>
+                <th class="text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody id="report-table-body">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>

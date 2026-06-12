@@ -10,6 +10,7 @@ const path = require("path");
 const multer = require("multer");
 const fs = require("fs");
 const { spawn } = require("child_process");
+const archiver = require("archiver");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -233,6 +234,10 @@ async function initDb() {
       UserID INTEGER NOT NULL,
       OrderDate TEXT NOT NULL,
       TotalAmount REAL NOT NULL,
+      PaymentMethod TEXT DEFAULT 'Cash',
+      Deposit REAL DEFAULT 0,
+      Discount REAL DEFAULT 0,
+      RemainingBalance REAL DEFAULT 0,
       FOREIGN KEY (CustomerID) REFERENCES customers(CustomerID) ON DELETE RESTRICT,
       FOREIGN KEY (UserID) REFERENCES users(UserID) ON DELETE RESTRICT
     )
@@ -252,6 +257,21 @@ async function initDb() {
       FOREIGN KEY (OrderID) REFERENCES orders(OrderID) ON DELETE CASCADE
     )
   `);
+
+  // Migrate orders table: add payment/deposit/discount columns if not present
+  const orderMigrations = [
+    "ALTER TABLE orders ADD COLUMN PaymentMethod TEXT DEFAULT 'Cash'",
+    "ALTER TABLE orders ADD COLUMN Deposit REAL DEFAULT 0",
+    "ALTER TABLE orders ADD COLUMN Discount REAL DEFAULT 0",
+    "ALTER TABLE orders ADD COLUMN RemainingBalance REAL DEFAULT 0",
+  ];
+  for (const sql of orderMigrations) {
+    try {
+      await dbRun(sql);
+    } catch (e) {
+      /* column already exists */
+    }
+  }
 
   // Migrate existing databases: add new columns if not present
   const migrations = [
@@ -783,7 +803,16 @@ app.get("/api/orders/:id", async (req, res) => {
 });
 
 app.post("/api/orders", async (req, res) => {
-  const { CustomerID, UserID, OrderDate, TotalAmount } = req.body;
+  const {
+    CustomerID,
+    UserID,
+    OrderDate,
+    TotalAmount,
+    PaymentMethod,
+    Deposit,
+    Discount,
+    RemainingBalance,
+  } = req.body;
   if (!CustomerID || !UserID || !OrderDate || TotalAmount === undefined) {
     return res.status(400).json({
       message: "CustomerID, UserID, OrderDate, and TotalAmount are required",
@@ -791,8 +820,17 @@ app.post("/api/orders", async (req, res) => {
   }
   try {
     const result = await dbRun(
-      "INSERT INTO orders (CustomerID, UserID, OrderDate, TotalAmount) VALUES (?, ?, ?, ?)",
-      [CustomerID, UserID, OrderDate, TotalAmount],
+      "INSERT INTO orders (CustomerID, UserID, OrderDate, TotalAmount, PaymentMethod, Deposit, Discount, RemainingBalance) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      [
+        CustomerID,
+        UserID,
+        OrderDate,
+        TotalAmount,
+        PaymentMethod || "Cash",
+        Deposit || 0,
+        Discount || 0,
+        RemainingBalance || 0,
+      ],
     );
     res.status(201).json(result.id);
   } catch (err) {
@@ -801,7 +839,16 @@ app.post("/api/orders", async (req, res) => {
 });
 
 app.put("/api/orders/:id", async (req, res) => {
-  const { CustomerID, UserID, OrderDate, TotalAmount } = req.body;
+  const {
+    CustomerID,
+    UserID,
+    OrderDate,
+    TotalAmount,
+    PaymentMethod,
+    Deposit,
+    Discount,
+    RemainingBalance,
+  } = req.body;
   if (!CustomerID || !UserID || !OrderDate || TotalAmount === undefined) {
     return res.status(400).json({
       message: "CustomerID, UserID, OrderDate, and TotalAmount are required",
@@ -809,8 +856,18 @@ app.put("/api/orders/:id", async (req, res) => {
   }
   try {
     const result = await dbRun(
-      "UPDATE orders SET CustomerID = ?, UserID = ?, OrderDate = ?, TotalAmount = ? WHERE OrderID = ?",
-      [CustomerID, UserID, OrderDate, TotalAmount, req.params.id],
+      "UPDATE orders SET CustomerID = ?, UserID = ?, OrderDate = ?, TotalAmount = ?, PaymentMethod = ?, Deposit = ?, Discount = ?, RemainingBalance = ? WHERE OrderID = ?",
+      [
+        CustomerID,
+        UserID,
+        OrderDate,
+        TotalAmount,
+        PaymentMethod || "Cash",
+        Deposit || 0,
+        Discount || 0,
+        RemainingBalance || 0,
+        req.params.id,
+      ],
     );
     if (result.changes === 0)
       return res.status(404).json({ message: "Order not found" });
@@ -1073,6 +1130,89 @@ app.post("/api/auditlog", async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
+// Backup endpoint – creates a zip with database and images
+app.get("/api/backup", async (req, res) => {
+  try {
+    // Create backup zip file
+    const backupDir = path.join(DATA_DIR, "backups");
+    if (!fs.existsSync(backupDir)) {
+      fs.mkdirSync(backupDir, { recursive: true });
+    }
+
+    const timestamp = new Date()
+      .toISOString()
+      .replace(/[^0-9]/g, "")
+      .slice(0, 14);
+    const backupZipPath = path.join(backupDir, `${timestamp}_backup.zip`);
+    const output = fs.createWriteStream(backupZipPath);
+    const archive = archiver("zip", {
+      zlib: { level: 9 }, // Maximum compression
+    });
+
+    // Listen for all archive data to be written
+    output.on("close", () => {
+      console.log(
+        `Backup created: ${backupZipPath} (${archive.pointer()} bytes)`,
+      );
+      res.download(backupZipPath, `${timestamp}_backup.zip`, (err) => {
+        if (err) console.error("Download error:", err);
+        // Optional: Clean up old backups (keep only last 10)
+        cleanupOldBackups(backupDir, 10);
+      });
+    });
+
+    archive.on("error", (err) => {
+      console.error("Archive error:", err);
+      res
+        .status(500)
+        .json({ message: "Backup creation failed: " + err.message });
+    });
+
+    // Pipe archive data to the file
+    archive.pipe(output);
+
+    // Add database file
+    const dbPath = path.join(DATA_DIR, "beskpoke.db");
+    if (fs.existsSync(dbPath)) {
+      archive.file(dbPath, { name: "beskpoke.db" });
+    }
+
+    // Add all images from uploads directory
+    const uploadsPath = uploadDir;
+    if (fs.existsSync(uploadsPath)) {
+      archive.directory(uploadsPath, "uploads");
+    }
+
+    // Finalize the archive
+    await archive.finalize();
+  } catch (err) {
+    console.error("Backup error:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Helper function to clean up old backups
+function cleanupOldBackups(backupDir, keepCount) {
+  try {
+    const files = fs
+      .readdirSync(backupDir)
+      .filter((f) => f.startsWith("backup-") && f.endsWith(".zip"))
+      .map((f) => ({
+        name: f,
+        time: fs.statSync(path.join(backupDir, f)).mtime.getTime(),
+      }))
+      .sort((a, b) => b.time - a.time);
+
+    // Delete older backups
+    for (let i = keepCount; i < files.length; i++) {
+      fs.unlinkSync(path.join(backupDir, files[i].name));
+      console.log(`Deleted old backup: ${files[i].name}`);
+    }
+  } catch (err) {
+    console.warn("Cleanup error:", err.message);
+  }
+}
 
 // Catch-all route to serve index.html for UI SPA routing, if any
 app.get(/^(?!\/api).*/, (req, res) => {
