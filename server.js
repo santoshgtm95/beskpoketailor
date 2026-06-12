@@ -10,6 +10,7 @@ const path = require("path");
 const multer = require("multer");
 const fs = require("fs");
 const { spawn } = require("child_process");
+const archiver = require("archiver");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -1129,6 +1130,89 @@ app.post("/api/auditlog", async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
+// Backup endpoint – creates a zip with database and images
+app.get("/api/backup", async (req, res) => {
+  try {
+    // Create backup zip file
+    const backupDir = path.join(DATA_DIR, "backups");
+    if (!fs.existsSync(backupDir)) {
+      fs.mkdirSync(backupDir, { recursive: true });
+    }
+
+    const timestamp = new Date()
+      .toISOString()
+      .replace(/[^0-9]/g, "")
+      .slice(0, 14);
+    const backupZipPath = path.join(backupDir, `${timestamp}_backup.zip`);
+    const output = fs.createWriteStream(backupZipPath);
+    const archive = archiver("zip", {
+      zlib: { level: 9 }, // Maximum compression
+    });
+
+    // Listen for all archive data to be written
+    output.on("close", () => {
+      console.log(
+        `Backup created: ${backupZipPath} (${archive.pointer()} bytes)`,
+      );
+      res.download(backupZipPath, `${timestamp}_backup.zip`, (err) => {
+        if (err) console.error("Download error:", err);
+        // Optional: Clean up old backups (keep only last 10)
+        cleanupOldBackups(backupDir, 10);
+      });
+    });
+
+    archive.on("error", (err) => {
+      console.error("Archive error:", err);
+      res
+        .status(500)
+        .json({ message: "Backup creation failed: " + err.message });
+    });
+
+    // Pipe archive data to the file
+    archive.pipe(output);
+
+    // Add database file
+    const dbPath = path.join(DATA_DIR, "beskpoke.db");
+    if (fs.existsSync(dbPath)) {
+      archive.file(dbPath, { name: "beskpoke.db" });
+    }
+
+    // Add all images from uploads directory
+    const uploadsPath = uploadDir;
+    if (fs.existsSync(uploadsPath)) {
+      archive.directory(uploadsPath, "uploads");
+    }
+
+    // Finalize the archive
+    await archive.finalize();
+  } catch (err) {
+    console.error("Backup error:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Helper function to clean up old backups
+function cleanupOldBackups(backupDir, keepCount) {
+  try {
+    const files = fs
+      .readdirSync(backupDir)
+      .filter((f) => f.startsWith("backup-") && f.endsWith(".zip"))
+      .map((f) => ({
+        name: f,
+        time: fs.statSync(path.join(backupDir, f)).mtime.getTime(),
+      }))
+      .sort((a, b) => b.time - a.time);
+
+    // Delete older backups
+    for (let i = keepCount; i < files.length; i++) {
+      fs.unlinkSync(path.join(backupDir, files[i].name));
+      console.log(`Deleted old backup: ${files[i].name}`);
+    }
+  } catch (err) {
+    console.warn("Cleanup error:", err.message);
+  }
+}
 
 // Catch-all route to serve index.html for UI SPA routing, if any
 app.get(/^(?!\/api).*/, (req, res) => {
