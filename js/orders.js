@@ -196,9 +196,9 @@ const OrdersPage = (() => {
 
       const measImgWrap = document.getElementById("meas-sub-image-wrap");
       if (selectedSub.Image) {
-        measImgWrap.innerHTML = `<img src="${selectedSub.Image}" alt="${sanitize(selectedSub.Name)}" style="width: 150px; height: 150px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border);" />`;
+        measImgWrap.innerHTML = `<img src="${selectedSub.Image}" alt="${sanitize(selectedSub.Name)}" style="width: 220px; height: 220px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border);" />`;
       } else {
-        measImgWrap.innerHTML = `<div style="display: flex; width: 150px; height: 150px; border-radius: 6px; background: linear-gradient(135deg, var(--gold-dark), var(--gold)); color: #fff; align-items: center; justify-content: center; font-size: 48px; font-weight: bold; border: 1px solid var(--border);">🧵</div>`;
+        measImgWrap.innerHTML = `<div style="display: flex; width: 220px; height: 220px; border-radius: 6px; background: linear-gradient(135deg, var(--gold-dark), var(--gold)); color: #fff; align-items: center; justify-content: center; font-size: 56px; font-weight: bold; border: 1px solid var(--border);">🧵</div>`;
       }
 
       // Reset modal fields
@@ -232,9 +232,9 @@ const OrdersPage = (() => {
 
       const measImgWrap = document.getElementById("meas-pant-sub-image-wrap");
       if (selectedSub.Image) {
-        measImgWrap.innerHTML = `<img src="${selectedSub.Image}" alt="${sanitize(selectedSub.Name)}" style="width: 150px; height: 150px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border);" />`;
+        measImgWrap.innerHTML = `<img src="${selectedSub.Image}" alt="${sanitize(selectedSub.Name)}" style="width: 220px; height: 220px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border);" />`;
       } else {
-        measImgWrap.innerHTML = `<div style="display: flex; width: 150px; height: 150px; border-radius: 6px; background: linear-gradient(135deg, var(--gold-dark), var(--gold)); color: #fff; align-items: center; justify-content: center; font-size: 48px; font-weight: bold; border: 1px solid var(--border);">🧵</div>`;
+        measImgWrap.innerHTML = `<div style="display: flex; width: 220px; height: 220px; border-radius: 6px; background: linear-gradient(135deg, var(--gold-dark), var(--gold)); color: #fff; align-items: center; justify-content: center; font-size: 56px; font-weight: bold; border: 1px solid var(--border);">🧵</div>`;
       }
 
       // Reset modal fields
@@ -267,9 +267,9 @@ const OrdersPage = (() => {
 
       const measImgWrap = document.getElementById("meas-shirt-sub-image-wrap");
       if (selectedSub.Image) {
-        measImgWrap.innerHTML = `<img src="${selectedSub.Image}" alt="${sanitize(selectedSub.Name)}" style="width: 150px; height: 150px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border);" />`;
+        measImgWrap.innerHTML = `<img src="${selectedSub.Image}" alt="${sanitize(selectedSub.Name)}" style="width: 220px; height: 220px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border);" />`;
       } else {
-        measImgWrap.innerHTML = `<div style="display: flex; width: 150px; height: 150px; border-radius: 6px; background: linear-gradient(135deg, var(--gold-dark), var(--gold)); color: #fff; align-items: center; justify-content: center; font-size: 48px; font-weight: bold; border: 1px solid var(--border);">🧵</div>`;
+        measImgWrap.innerHTML = `<div style="display: flex; width: 220px; height: 220px; border-radius: 6px; background: linear-gradient(135deg, var(--gold-dark), var(--gold)); color: #fff; align-items: center; justify-content: center; font-size: 56px; font-weight: bold; border: 1px solid var(--border);">🧵</div>`;
       }
 
       // Reset modal fields
