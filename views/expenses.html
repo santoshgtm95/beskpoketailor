@@ -1,0 +1,40 @@
+<div class="page" id="page-expenses">
+  <div class="card" style="margin-bottom: 16px">
+    <div class="flex justify-between items-center gap-3">
+      <div class="search-input-wrap" style="max-width: 320px; flex: 1">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="expenses-search" placeholder="Search expenses…" />
+      </div>
+      <div class="flex gap-2 items-center">
+        <span class="text-muted" style="font-size: 13px">
+          <strong id="expenses-count">0</strong> expenses &nbsp;|&nbsp; Total: <strong id="expenses-total" style="color: var(--gold-light)">THB 0.00</strong>
+        </span>
+        <button class="btn btn-gold btn-sm" onclick="ExpensesPage.openAdd()">
+          ➕ Add Expense
+        </button>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="order-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Date</th>
+            <th>Name</th>
+            <th class="text-right">Amount</th>
+            <th>Remark</th>
+            <th class="text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="expenses-tbody">
+          <tr>
+            <td colspan="6" class="table-empty">Loading…</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="pagination" id="expenses-pagination"></div>
+  </div>
+</div>

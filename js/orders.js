@@ -16,6 +16,9 @@ const OrdersPage = (() => {
   let selectedCat = null; // { CategoryID, Name }
   let selectedSub = null; // { SubcatID, Name, Image, CategoryID }
 
+  // Fabric inventory state (shared across all subcategory modals)
+  let fabricCache = [];
+
   // History state
   let allOrders = [];
   let historyPage = 1;
@@ -135,6 +138,97 @@ const OrdersPage = (() => {
     renderCatCards();
     showStep("cat");
     await refreshNextOrderId();
+    // Pre-load fabric inventory so it's ready when a modal opens
+    loadFabricCache();
+  }
+
+  // ── Fabric Inventory helpers ────────────────────────────────────
+  async function loadFabricCache() {
+    try {
+      fabricCache = await DB.inventory.getAll();
+    } catch (err) {
+      console.error("Failed to load fabric inventory:", err);
+      fabricCache = [];
+    }
+  }
+
+  // Populate the fabric <select> for a given modal prefix (meas / meas-pant / meas-shirt)
+  function populateFabricDropdown(prefix) {
+    const sel = document.getElementById(`${prefix}-fabric`);
+    if (!sel) return;
+
+    // Only show fabrics that still have stock available
+    const available = fabricCache.filter(
+      (f) => f.Count != null && Number(f.Count) > 0,
+    );
+
+    // Preserve the placeholder
+    const placeholder = '<option value="">— Select fabric —</option>';
+    if (available.length === 0) {
+      sel.innerHTML =
+        placeholder + '<option value="" disabled>(no fabrics in stock)</option>';
+    } else {
+      sel.innerHTML =
+        placeholder +
+        available
+          .map((f) => {
+            const code = f.Code ? ` - ${sanitize(f.Code)}` : "";
+            return `<option value="${f.FabricID}">${sanitize(f.Name)}${code}  (Stock: ${f.Count} ${sanitize(f.Unit || "")})</option>`;
+          })
+          .join("");
+    }
+
+    // Reset the info row
+    const info = document.getElementById(`${prefix}-fabric-info`);
+    if (info) info.style.display = "none";
+    const useInput = document.getElementById(`${prefix}-use-count`);
+    if (useInput) useInput.value = "";
+  }
+
+  // Called when a fabric option is chosen (from the onchange handler)
+  function _pickFabric(prefix) {
+    const sel = document.getElementById(`${prefix}-fabric`);
+    const info = document.getElementById(`${prefix}-fabric-info`);
+    const remainingEl = document.getElementById(`${prefix}-fabric-remaining`);
+    const unitEl = document.getElementById(`${prefix}-fabric-unit`);
+    const useInput = document.getElementById(`${prefix}-use-count`);
+
+    const fabricId = parseInt(sel.value, 10);
+    const fabric = fabricCache.find((f) => f.FabricID === fabricId);
+
+    if (!fabric) {
+      if (info) info.style.display = "none";
+      if (useInput) useInput.value = "";
+      return;
+    }
+
+    if (remainingEl)
+      remainingEl.textContent = `${fabric.Count} ${fabric.Unit || ""}`;
+    if (unitEl) unitEl.textContent = fabric.Unit || "";
+    if (info) info.style.display = "flex";
+    if (useInput && !useInput.value) useInput.value = "";
+  }
+
+  // Read the fabric selection for a modal prefix into { FabricID, UseCount, FabricUnit }
+  function readFabricSelection(prefix) {
+    const sel = document.getElementById(`${prefix}-fabric`);
+    if (!sel || !sel.value) return null;
+
+    const fabricId = parseInt(sel.value, 10);
+    const fabric = fabricCache.find((f) => f.FabricID === fabricId);
+    if (!fabric) return null;
+
+    const useInput = document.getElementById(`${prefix}-use-count`);
+    let useCount = useInput ? parseFloat(useInput.value) : NaN;
+    if (isNaN(useCount) || useCount < 0) useCount = 0;
+
+    return {
+      FabricID: fabric.FabricID,
+      FabricName: fabric.Name,
+      FabricCode: fabric.Code || "",
+      UseCount: useCount,
+      FabricUnit: fabric.Unit || "",
+    };
   }
 
   function renderCatCards() {
@@ -209,6 +303,7 @@ const OrdersPage = (() => {
 
     if (selectedCat.Name === "Jacket") {
       // Measurements Modal explicitly for Jacket
+      populateFabricDropdown("meas");
       document.getElementById("meas-cat-sub-name").textContent =
         `${selectedCat.Name} — ${selectedSub.Name}`;
 
@@ -245,6 +340,7 @@ const OrdersPage = (() => {
       Modal.open("modal-measurements");
     } else if (selectedCat.Name === "Pant") {
       // Measurements Modal explicitly for Pant
+      populateFabricDropdown("meas-pant");
       document.getElementById("meas-pant-cat-sub-name").textContent =
         `${selectedCat.Name} — ${selectedSub.Name}`;
 
@@ -280,6 +376,7 @@ const OrdersPage = (() => {
       Modal.open("modal-meas-pant");
     } else if (selectedCat.Name === "Shirt") {
       // Measurements Modal explicitly for Shirt
+      populateFabricDropdown("meas-shirt");
       document.getElementById("meas-shirt-cat-sub-name").textContent =
         `${selectedCat.Name} — ${selectedSub.Name}`;
 
@@ -441,6 +538,13 @@ const OrdersPage = (() => {
     if (m.length) customDesc += ` | Meas: ${m.join(", ")}`;
     if (chks.length) customDesc += ` | Traits: ${chks.join(", ")}`;
 
+    const fabricSel = readFabricSelection("meas-pant");
+    if (fabricSel) {
+      customDesc += ` | Fabric: ${fabricSel.FabricName}${fabricSel.FabricCode ? " (" + fabricSel.FabricCode + ")" : ""}`;
+      if (fabricSel.UseCount > 0)
+        customDesc += ` | Fabric Used: ${fabricSel.UseCount} ${fabricSel.FabricUnit}`;
+    }
+
     const line = {
       tempId: Date.now(),
       CategoryID: selectedCat.CategoryID,
@@ -452,6 +556,9 @@ const OrdersPage = (() => {
       UnitPrice: price,
       LineTotal: +(qty * price).toFixed(2),
       CustomDesc: customDesc,
+      FabricID: fabricSel ? fabricSel.FabricID : null,
+      UseCount: fabricSel ? fabricSel.UseCount : null,
+      FabricUnit: fabricSel ? fabricSel.FabricUnit : null,
     };
 
     orderLines.push(line);
@@ -549,6 +656,13 @@ const OrdersPage = (() => {
     if (m.length) customDesc += ` | Meas: ${m.join(", ")}`;
     if (chks.length) customDesc += ` | Traits: ${chks.join(", ")}`;
 
+    const fabricSel = readFabricSelection("meas-shirt");
+    if (fabricSel) {
+      customDesc += ` | Fabric: ${fabricSel.FabricName}${fabricSel.FabricCode ? " (" + fabricSel.FabricCode + ")" : ""}`;
+      if (fabricSel.UseCount > 0)
+        customDesc += ` | Fabric Used: ${fabricSel.UseCount} ${fabricSel.FabricUnit}`;
+    }
+
     const line = {
       tempId: Date.now(),
       CategoryID: selectedCat.CategoryID,
@@ -560,6 +674,9 @@ const OrdersPage = (() => {
       UnitPrice: price,
       LineTotal: +(qty * price).toFixed(2),
       CustomDesc: customDesc,
+      FabricID: fabricSel ? fabricSel.FabricID : null,
+      UseCount: fabricSel ? fabricSel.UseCount : null,
+      FabricUnit: fabricSel ? fabricSel.FabricUnit : null,
     };
 
     orderLines.push(line);
@@ -630,6 +747,13 @@ const OrdersPage = (() => {
     if (m.length) customDesc += ` | Meas: ${m.join(", ")}`;
     if (chks.length) customDesc += ` | Traits: ${chks.join(", ")}`;
 
+    const fabricSel = readFabricSelection("meas");
+    if (fabricSel) {
+      customDesc += ` | Fabric: ${fabricSel.FabricName}${fabricSel.FabricCode ? " (" + fabricSel.FabricCode + ")" : ""}`;
+      if (fabricSel.UseCount > 0)
+        customDesc += ` | Fabric Used: ${fabricSel.UseCount} ${fabricSel.FabricUnit}`;
+    }
+
     const line = {
       tempId: Date.now(),
       CategoryID: selectedCat.CategoryID,
@@ -641,6 +765,9 @@ const OrdersPage = (() => {
       UnitPrice: price,
       LineTotal: +(qty * price).toFixed(2),
       CustomDesc: customDesc,
+      FabricID: fabricSel ? fabricSel.FabricID : null,
+      UseCount: fabricSel ? fabricSel.UseCount : null,
+      FabricUnit: fabricSel ? fabricSel.FabricUnit : null,
     };
 
     orderLines.push(line);
@@ -786,6 +913,9 @@ const OrdersPage = (() => {
           Quantity: l.Quantity,
           UnitPrice: l.UnitPrice,
           LineTotal: l.LineTotal,
+          FabricID: l.FabricID || null,
+          UseCount: l.UseCount == null ? null : l.UseCount,
+          FabricUnit: l.FabricUnit || null,
         });
       }
 
@@ -834,6 +964,7 @@ const OrdersPage = (() => {
   // Load order into the edit form
   async function loadOrderForEdit(orderId) {
     await AppShell.navigate("order-entry", true);
+    await loadFabricCache();
 
     const order = await DB.orders.get(orderId);
     const lines = await DB.orderlines.getByOrder(orderId);
@@ -896,6 +1027,9 @@ const OrdersPage = (() => {
         UnitPrice: l.UnitPrice,
         LineTotal: l.LineTotal,
         CustomDesc: l.Description,
+        FabricID: l.FabricID || null,
+        UseCount: l.UseCount || null,
+        FabricUnit: l.FabricUnit || null,
       });
     }
 
@@ -1216,6 +1350,7 @@ const OrdersPage = (() => {
   }
 
   async function viewOrder(orderId) {
+    await loadFabricCache();
     const order = await DB.orders.get(orderId);
     const lines = await DB.orderlines.getByOrder(orderId);
     const cust = await DB.customers.get(order.CustomerID);
@@ -1232,15 +1367,33 @@ const OrdersPage = (() => {
           desc = "—";
         }
       }
+
+      // Build fabric info row (from DB fields, not parsed from Description)
+      let fabricHtml = "";
+      if (l.FabricID) {
+        const fab = fabricCache.find((f) => f.FabricID === l.FabricID);
+        const fabName = fab ? fab.Name : "Unknown";
+        const fabCode = fab && fab.Code ? ` (${fab.Code})` : "";
+        fabricHtml = `<div style="margin-top:6px;padding:4px 8px;background:var(--bg-input,#2a2a2a);border-radius:4px;font-size:12px;color:var(--text-secondary);">🧶 Fabric: <strong style="color:var(--gold-light)">${sanitize(fabName)}${sanitize(fabCode)}</strong>`;
+        if (l.UseCount && l.UseCount > 0) {
+          fabricHtml += ` &nbsp;|&nbsp; Used: <strong style="color:var(--gold-light)">${l.UseCount} ${sanitize(l.FabricUnit || "")}</strong>`;
+        }
+        fabricHtml += `</div>`;
+      }
+
       let parts = (desc || "").split(" | ");
       let formattedDesc = `<strong>${sanitize(parts[0])}</strong>`;
       if (parts.length > 1) {
         formattedDesc += `<ul style="margin:6px 0 0 16px; padding-left: 10px; color: var(--text-secondary); font-size: 14px; line-height: 1.5;">`;
         for (let i = 1; i < parts.length; i++) {
-          formattedDesc += `<li style="margin-bottom: 4px;">${sanitize(parts[i])}</li>`;
+          // Skip fabric info in Description since we show it separately via DB fields
+          const p = parts[i];
+          if (p.startsWith("Fabric: ") || p.startsWith("Fabric Used: ")) continue;
+          formattedDesc += `<li style="margin-bottom: 4px;">${sanitize(p)}</li>`;
         }
         formattedDesc += `</ul>`;
       }
+      formattedDesc += fabricHtml;
 
       linesHtml += `<tr>
         <td style="vertical-align: top; padding-top: 14px;">${formattedDesc}</td>
@@ -1347,5 +1500,6 @@ const OrdersPage = (() => {
     // Picker callbacks (called from inline HTML)
     _pickCat,
     _pickSub,
+    _pickFabric,
   };
 })();

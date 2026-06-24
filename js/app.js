@@ -8,6 +8,7 @@ const AppShell = (() => {
   const NAV_ITEMS = [
     { id: "dashboard", icon: "🏠", label: "Dashboard", section: "main" },
     { id: "inventory", icon: "🧶", label: "Inventory", section: "main" },
+    { id: "expenses", icon: "💰", label: "Expenses", section: "main" },
     { id: "order-entry", icon: "✂️", label: "New Order", section: "main" },
     {
       id: "order-history",
@@ -115,6 +116,9 @@ const AppShell = (() => {
         break;
       case "inventory":
         await InventoryPage.load();
+        break;
+      case "expenses":
+        await ExpensesPage.load();
         break;
       case "users":
         await UsersPage.load();
@@ -311,6 +315,7 @@ const AppShell = (() => {
       { id: "page-inventory-placeholder", url: "views/inventory.html" },
       { id: "page-users-placeholder", url: "views/users.html" },
       { id: "page-auditlog-placeholder", url: "views/auditlog.html" },
+      { id: "page-expenses-placeholder", url: "views/expenses.html" },
       { id: "modals-placeholder", url: "views/modals.html" },
     ];
 
@@ -390,6 +395,9 @@ const AppShell = (() => {
     document
       .getElementById("btn-save-inventory")
       .addEventListener("click", () => InventoryPage.save());
+    document
+      .getElementById("btn-save-expense")
+      .addEventListener("click", () => ExpensesPage.save());
 
     // Quick action buttons
     document

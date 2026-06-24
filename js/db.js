@@ -153,4 +153,13 @@ const DB = {
     put:    (r)        => apiRequest(`/inventory/${r.FabricID}`, { method: 'PUT', body: r }),
     delete: (id)       => apiRequest(`/inventory/${id}`, { method: 'DELETE' }),
   },
+
+  // Expenses
+  expenses: {
+    getAll: ()         => apiRequest('/expenses'),
+    get:    (id)       => apiRequest(`/expenses/${id}`),
+    add:    (r)        => apiRequest('/expenses', { method: 'POST', body: r }),
+    put:    (r)        => apiRequest(`/expenses/${r.ExpenseID}`, { method: 'PUT', body: r }),
+    delete: (id)       => apiRequest(`/expenses/${id}`, { method: 'DELETE' }),
+  },
 };

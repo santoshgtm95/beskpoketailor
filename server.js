@@ -303,6 +303,9 @@ async function initDb() {
       Quantity REAL NOT NULL,
       UnitPrice REAL NOT NULL,
       LineTotal REAL NOT NULL,
+      FabricID INTEGER,
+      UseCount REAL,
+      FabricUnit TEXT,
       FOREIGN KEY (OrderID) REFERENCES orders(OrderID) ON DELETE CASCADE
     )
   `);
@@ -327,6 +330,9 @@ async function initDb() {
     "ALTER TABLE orderlines ADD COLUMN CategoryID INTEGER",
     "ALTER TABLE orderlines ADD COLUMN SubcatID INTEGER",
     "ALTER TABLE orderlines ADD COLUMN Description TEXT",
+    "ALTER TABLE orderlines ADD COLUMN FabricID INTEGER",
+    "ALTER TABLE orderlines ADD COLUMN UseCount REAL",
+    "ALTER TABLE orderlines ADD COLUMN FabricUnit TEXT",
   ];
   for (const sql of migrations) {
     try {
@@ -408,6 +414,16 @@ async function initDb() {
       Count REAL NOT NULL,
       Unit TEXT NOT NULL DEFAULT 'yards',
       Price REAL NOT NULL,
+      Remark TEXT
+    )
+  `);
+
+  await dbRun(`
+    CREATE TABLE IF NOT EXISTS expenses (
+      ExpenseID INTEGER PRIMARY KEY AUTOINCREMENT,
+      ExpenseDate TEXT NOT NULL,
+      Name TEXT NOT NULL,
+      Amount REAL NOT NULL,
       Remark TEXT
     )
   `);
@@ -873,6 +889,9 @@ app.post("/api/orderlines", async (req, res) => {
     Quantity,
     UnitPrice,
     LineTotal,
+    FabricID,
+    UseCount,
+    FabricUnit,
   } = req.body;
   if (
     !OrderID ||
@@ -886,7 +905,7 @@ app.post("/api/orderlines", async (req, res) => {
   }
   try {
     const result = await dbRun(
-      "INSERT INTO orderlines (OrderID, ItemID, CategoryID, SubcatID, Description, Quantity, UnitPrice, LineTotal) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO orderlines (OrderID, ItemID, CategoryID, SubcatID, Description, Quantity, UnitPrice, LineTotal, FabricID, UseCount, FabricUnit) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       [
         OrderID,
         ItemID || null,
@@ -896,8 +915,24 @@ app.post("/api/orderlines", async (req, res) => {
         Quantity,
         UnitPrice,
         LineTotal,
+        FabricID || null,
+        UseCount == null ? null : UseCount,
+        FabricUnit || null,
       ],
     );
+
+    // Decrement fabric inventory count when a fabric is consumed
+    if (FabricID && UseCount && UseCount > 0) {
+      try {
+        await dbRun(
+          "UPDATE fabric_inventory SET Count = MAX(0, Count - ?) WHERE FabricID = ?",
+          [UseCount, FabricID],
+        );
+      } catch (invErr) {
+        console.error("Failed to decrement fabric count:", invErr.message);
+      }
+    }
+
     res.status(201).json(result.id);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -914,6 +949,9 @@ app.put("/api/orderlines/:id", async (req, res) => {
     Quantity,
     UnitPrice,
     LineTotal,
+    FabricID,
+    UseCount,
+    FabricUnit,
   } = req.body;
   if (
     !OrderID ||
@@ -927,7 +965,7 @@ app.put("/api/orderlines/:id", async (req, res) => {
   }
   try {
     const result = await dbRun(
-      "UPDATE orderlines SET OrderID = ?, ItemID = ?, CategoryID = ?, SubcatID = ?, Description = ?, Quantity = ?, UnitPrice = ?, LineTotal = ? WHERE LineID = ?",
+      "UPDATE orderlines SET OrderID = ?, ItemID = ?, CategoryID = ?, SubcatID = ?, Description = ?, Quantity = ?, UnitPrice = ?, LineTotal = ?, FabricID = ?, UseCount = ?, FabricUnit = ? WHERE LineID = ?",
       [
         OrderID,
         ItemID || null,
@@ -937,6 +975,9 @@ app.put("/api/orderlines/:id", async (req, res) => {
         Quantity,
         UnitPrice,
         LineTotal,
+        FabricID || null,
+        UseCount == null ? null : UseCount,
+        FabricUnit || null,
         req.params.id,
       ],
     );
@@ -962,8 +1003,25 @@ app.delete("/api/orderlines/:id", async (req, res) => {
 });
 
 // Additional OrderLines delete helper by OrderID
+// Restores consumed fabric counts back to inventory before removing the lines.
 app.delete("/api/orderlines/order/:orderId", async (req, res) => {
   try {
+    // Return fabric that was consumed by these lines back to stock
+    const lines = await dbAll(
+      "SELECT FabricID, UseCount FROM orderlines WHERE OrderID = ? AND FabricID IS NOT NULL AND UseCount IS NOT NULL AND UseCount > 0",
+      [req.params.orderId],
+    );
+    for (const l of lines) {
+      try {
+        await dbRun(
+          "UPDATE fabric_inventory SET Count = Count + ? WHERE FabricID = ?",
+          [l.UseCount, l.FabricID],
+        );
+      } catch (invErr) {
+        console.error("Failed to restore fabric count:", invErr.message);
+      }
+    }
+
     await dbRun("DELETE FROM orderlines WHERE OrderID = ?", [
       req.params.orderId,
     ]);
@@ -1141,6 +1199,69 @@ app.delete("/api/inventory/:id", async (req, res) => {
   try {
     const result = await dbRun("DELETE FROM fabric_inventory WHERE FabricID = ?", [req.params.id]);
     if (result.changes === 0) return res.status(404).json({ message: "Fabric not found" });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ═══ Expenses CRUD ═══════════════════════════════════════════════════
+app.get("/api/expenses", async (req, res) => {
+  try {
+    const list = await dbAll("SELECT * FROM expenses ORDER BY ExpenseID DESC");
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.get("/api/expenses/:id", async (req, res) => {
+  try {
+    const row = await dbGet("SELECT * FROM expenses WHERE ExpenseID = ?", [req.params.id]);
+    if (!row) return res.status(404).json({ message: "Expense not found" });
+    res.json(row);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.post("/api/expenses", async (req, res) => {
+  const { ExpenseDate, Name, Amount, Remark } = req.body;
+  if (!ExpenseDate) return res.status(400).json({ message: "ExpenseDate is required" });
+  if (!Name) return res.status(400).json({ message: "Name is required" });
+  if (Amount == null) return res.status(400).json({ message: "Amount is required" });
+  try {
+    const result = await dbRun(
+      "INSERT INTO expenses (ExpenseDate, Name, Amount, Remark) VALUES (?, ?, ?, ?)",
+      [ExpenseDate, Name, Amount, Remark || null],
+    );
+    res.status(201).json(result.id);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.put("/api/expenses/:id", async (req, res) => {
+  const { ExpenseDate, Name, Amount, Remark } = req.body;
+  if (!ExpenseDate) return res.status(400).json({ message: "ExpenseDate is required" });
+  if (!Name) return res.status(400).json({ message: "Name is required" });
+  if (Amount == null) return res.status(400).json({ message: "Amount is required" });
+  try {
+    const result = await dbRun(
+      "UPDATE expenses SET ExpenseDate = ?, Name = ?, Amount = ?, Remark = ? WHERE ExpenseID = ?",
+      [ExpenseDate, Name, Amount, Remark || null, req.params.id],
+    );
+    if (result.changes === 0) return res.status(404).json({ message: "Expense not found" });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.delete("/api/expenses/:id", async (req, res) => {
+  try {
+    const result = await dbRun("DELETE FROM expenses WHERE ExpenseID = ?", [req.params.id]);
+    if (result.changes === 0) return res.status(404).json({ message: "Expense not found" });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ message: err.message });

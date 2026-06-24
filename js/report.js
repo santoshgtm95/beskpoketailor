@@ -6,6 +6,7 @@
 const ReportView = (() => {
   let ordersList = [];
   let customersList = [];
+  let expensesList = [];
 
   const fType = () => document.getElementById("report-filter-type");
   const fDaily = () => document.getElementById("report-daily-filter");
@@ -40,31 +41,41 @@ const ReportView = (() => {
     try {
       ordersList = await DB.orders.getAll();
       customersList = await DB.customers.getAll();
+      expensesList = await DB.expenses.getAll();
 
       const type = fType().value;
       let filtered = [];
+      let filteredExpenses = [];
 
       if (type === "daily") {
         const d = valDate().value;
         filtered = ordersList.filter((o) => o.OrderDate === d);
+        filteredExpenses = expensesList.filter((e) => e.ExpenseDate === d);
       } else if (type === "monthly") {
         const m = valMonth().value; // YYYY-MM
         filtered = ordersList.filter((o) => o.OrderDate.startsWith(m));
+        filteredExpenses = expensesList.filter((e) =>
+          String(e.ExpenseDate).startsWith(m),
+        );
       } else if (type === "yearly") {
         const y = valYear().value; // YYYY
         filtered = ordersList.filter((o) => o.OrderDate.startsWith(y));
+        filteredExpenses = expensesList.filter((e) =>
+          String(e.ExpenseDate).startsWith(y),
+        );
       }
 
-      renderReport(filtered);
+      renderReport(filtered, filteredExpenses);
     } catch (err) {
       console.error(err);
       UI.showToast("Error loading reports", "error");
     }
   }
 
-  function renderReport(orders) {
+  function renderReport(orders, expenses = []) {
     let totalOrders = orders.length;
     let totalRevenue = 0;
+    let totalExpenses = 0;
 
     const tbody = document.getElementById("report-table-body");
     tbody.innerHTML = "";
@@ -82,7 +93,7 @@ const ReportView = (() => {
         <td>${fmtOrderId(o.OrderID)}</td>
         <td>${fmtDate(o.OrderDate)}</td>
         <td>${custName}</td>
-        <td class="text-right">$${parseFloat(o.TotalAmount).toFixed(2)}</td>
+        <td class="text-right">${fmtCurrency(o.TotalAmount)}</td>
       `;
       tbody.appendChild(tr);
     });
@@ -91,9 +102,19 @@ const ReportView = (() => {
       tbody.innerHTML = `<tr><td colspan="4" class="text-center">No orders found for this period.</td></tr>`;
     }
 
+    expenses.forEach((e) => {
+      totalExpenses += e.Amount || 0;
+    });
+
     document.getElementById("report-total-orders").innerText = totalOrders;
     document.getElementById("report-total-revenue").innerText =
-      `$${totalRevenue.toFixed(2)}`;
+      `${fmtCurrency(totalRevenue)}`;
+    const expEl = document.getElementById("report-total-expenses");
+    if (expEl) expEl.innerText = `${fmtCurrency(totalExpenses)}`;
+
+    // Total Profit = Total Revenue - Total Expenses
+    const profitEl = document.getElementById("report-total-profit");
+    if (profitEl) profitEl.innerText = `${fmtCurrency(totalRevenue - totalExpenses)}`;
 
     calculateItems(orders);
   }
