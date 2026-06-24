@@ -144,4 +144,13 @@ const DB = {
     getAll: ()         => apiRequest('/auditlog'),
     add:    (r)        => apiRequest('/auditlog', { method: 'POST', body: r }),
   },
+
+  // Fabric Inventory
+  inventory: {
+    getAll: ()         => apiRequest('/inventory'),
+    get:    (id)       => apiRequest(`/inventory/${id}`),
+    add:    (r)        => apiRequest('/inventory', { method: 'POST', body: r }),
+    put:    (r)        => apiRequest(`/inventory/${r.FabricID}`, { method: 'PUT', body: r }),
+    delete: (id)       => apiRequest(`/inventory/${id}`, { method: 'DELETE' }),
+  },
 };

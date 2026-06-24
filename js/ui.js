@@ -230,7 +230,7 @@ function fmtCurrency(n) {
   return (
     "THB " +
     Number(n || 0)
-      .toFixed(2)
+      .toFixed(0)
       .replace(/\B(?=(\d{3})+(?!\d))/g, ",")
   );
 }
@@ -255,6 +255,11 @@ function fmtDateTime(iso) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+// ── Format order ID with zero-padding to 4 digits ─────────────
+function fmtOrderId(id) {
+  return String(id || 0).padStart(4, "0");
 }
 
 // ── Today's date string (YYYY-MM-DD) ──────────────────────────

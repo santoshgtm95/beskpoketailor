@@ -112,11 +112,29 @@ const OrdersPage = (() => {
       step === "qty" ? "" : "none";
   }
 
+  async function refreshNextOrderId() {
+    const el = document.getElementById("order-number-value");
+    if (!el) return;
+    if (editingOrderId) {
+      el.textContent = fmtOrderId(editingOrderId);
+    } else {
+      try {
+        const orders = await DB.orders.getAll();
+        const maxId =
+          orders.length > 0 ? Math.max(...orders.map((o) => o.OrderID)) : 0;
+        el.textContent = fmtOrderId(maxId + 1);
+      } catch {
+        el.textContent = "----";
+      }
+    }
+  }
+
   async function populateCategories() {
     pickerCats = await DB.categories.getAll();
     pickerSubs = await DB.subcategories.getAll();
     renderCatCards();
     showStep("cat");
+    await refreshNextOrderId();
   }
 
   function renderCatCards() {
@@ -773,13 +791,13 @@ const OrdersPage = (() => {
 
       await audit(
         editingOrderId ? "UpdateOrder" : "CreateOrder",
-        `Order #${orderId} for customer ${custId}, total ${fmtCurrency(totalAmount)}`,
+        `Order ${fmtOrderId(orderId)} for customer ${custId}, total ${fmtCurrency(totalAmount)}`,
       );
 
       Toast.success(
         editingOrderId
-          ? `Order #${orderId} updated!`
-          : `Order #${orderId} saved!`,
+          ? `Order ${fmtOrderId(orderId)} updated!`
+          : `Order ${fmtOrderId(orderId)} saved!`,
       );
       resetOrderForm();
       if (typeof DashboardPage !== "undefined") DashboardPage.refresh();
@@ -809,6 +827,7 @@ const OrdersPage = (() => {
     showStep("cat");
     renderOrderLines();
     updateOrderTotal();
+    await refreshNextOrderId();
     Toast.info("Order form cleared.");
   }
 
@@ -882,7 +901,8 @@ const OrdersPage = (() => {
 
     renderOrderLines();
     updateOrderTotal();
-    Toast.info(`Editing Order #${orderId}`);
+    await refreshNextOrderId();
+    Toast.info(`Editing Order ${fmtOrderId(orderId)}`);
   }
 
   // ── Inline new-customer form ───────────────────────────────────
@@ -985,7 +1005,7 @@ const OrdersPage = (() => {
       </div>
       <div>
         <h2 class="invoice-title">Receipt</h2>
-        <div style="text-align: right; color: #666; font-size: 14px;">Order #${printOrderId}</div>
+        <div style="text-align: right; color: #666; font-size: 14px;">Order ${fmtOrderId(printOrderId)}</div>
       </div>
     </div>
     
@@ -1127,7 +1147,8 @@ const OrdersPage = (() => {
       const custMatch =
         !q ||
         (cust?.Name || "").toLowerCase().includes(q) ||
-        String(o.OrderID).includes(q);
+        String(o.OrderID).includes(q) ||
+        fmtOrderId(o.OrderID).includes(q);
       const dateMatch = !date || o.OrderDate === date;
       return custMatch && dateMatch;
     });
@@ -1165,7 +1186,7 @@ const OrdersPage = (() => {
           }
 
           return `<tr>
-          <td class="font-mono" style="color: var(--text-primary)">#${o.OrderID}</td>
+          <td class="font-mono" style="color: var(--text-primary)">${fmtOrderId(o.OrderID)}</td>
           <td>${fmtDate(o.OrderDate)}</td>
           <td><strong>${sanitize(cust?.Name || "Unknown")}</strong><br>
               <small class="text-muted">${sanitize(cust?.Phone || "")}</small></td>
@@ -1242,12 +1263,13 @@ const OrdersPage = (() => {
       <div class="grid-2 mb-3" style="background: var(--bg-panel); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border);">
         <div>
           <div class="text-muted" style="font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Customer Info</div>
-          <div class="font-bold" style="font-size:18px;">${sanitize(cust?.Name || "—")}</div>
-          <div class="text-secondary" style="font-size:14px;margin-top:2px;">${sanitize(cust?.Phone || "No phone")} | ${sanitize(cust?.Email || "No email")}</div>
+          <div class="font-bold" style="font-size:14px;">Name: ${sanitize(cust?.Name || "—")}</div>
+          <div class="font-bold" style="font-size:14px;margin-top:2px;">Phone: ${sanitize(cust?.Phone || "No phone")} </div>
+          <div class="font-bold" style="font-size:14px;margin-top:2px;">Email: ${sanitize(cust?.Email || "No email")}</div>
+          <div class="font-bold" style="font-size:14px;margin-top:2px;">Address: ${sanitize(cust?.Address || "No address")}</div>
         </div>
         <div style="text-align: right;">
-          <div class="text-muted" style="font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Order Status</div>
-          <div class="font-bold" style="font-size:20px;">#${order.OrderID}</div>
+          <div class="font-bold" style="font-size:20px;">${fmtOrderId(order.OrderID)}</div>
           <div class="text-secondary" style="font-size:14px;margin-top:2px;">${fmtDate(order.OrderDate)}</div>
         </div>
       </div>
@@ -1292,7 +1314,7 @@ const OrdersPage = (() => {
 
   async function deleteOrder(orderId) {
     const ok = await Confirm.show(
-      `Delete Order #${orderId}? This cannot be undone.`,
+      `Delete Order ${fmtOrderId(orderId)}? This cannot be undone.`,
       "Delete Order",
       true,
     );
@@ -1300,8 +1322,8 @@ const OrdersPage = (() => {
     try {
       await DB.orderlines.deleteByOrder(orderId);
       await DB.orders.delete(orderId);
-      await audit("DeleteOrder", `Deleted order #${orderId}`);
-      Toast.success(`Order #${orderId} deleted.`);
+      await audit("DeleteOrder", `Deleted order ${fmtOrderId(orderId)}`);
+      Toast.success(`Order ${fmtOrderId(orderId)} deleted.`);
       await loadHistory();
       if (typeof DashboardPage !== "undefined") DashboardPage.refresh();
     } catch (err) {

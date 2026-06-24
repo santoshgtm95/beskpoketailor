@@ -399,6 +399,19 @@ async function initDb() {
     )
   `);
 
+  await dbRun(`
+    CREATE TABLE IF NOT EXISTS fabric_inventory (
+      FabricID INTEGER PRIMARY KEY AUTOINCREMENT,
+      Name TEXT NOT NULL,
+      Code TEXT,
+      Color TEXT NOT NULL,
+      Count REAL NOT NULL,
+      Unit TEXT NOT NULL DEFAULT 'yards',
+      Price REAL NOT NULL,
+      Remark TEXT
+    )
+  `);
+
   // Seeding default data if no users exist
   const userCount = await dbGet("SELECT COUNT(*) as count FROM users");
   if (userCount.count === 0) {
@@ -408,10 +421,6 @@ async function initDb() {
     await dbRun(
       "INSERT INTO users (Username, PasswordHash, Email, Phone, Role, Name) VALUES (?, ?, ?, ?, ?, ?)",
       ["admin", "admin123", "admin@beskpoke.com", "", "Admin", "Administrator"],
-    );
-    await dbRun(
-      "INSERT INTO users (Username, PasswordHash, Email, Phone, Role, Name) VALUES (?, ?, ?, ?, ?, ?)",
-      ["clerk", "clerk123", "clerk@beskpoke.com", "", "Clerk", "Sarah Clerk"],
     );
 
     // Categories
@@ -428,113 +437,6 @@ async function initDb() {
     const jacketCatId = jacketCat.id;
     const pantCatId = pantCat.id;
     const shirtCatId = shirtCat.id;
-
-    // Subcategories
-    const leatherSub = await dbRun(
-      "INSERT INTO subcategories (CategoryID, Name, Image) VALUES (?, ?, ?)",
-      [jacketCatId, "Leather", ""],
-    );
-    const denimSub = await dbRun(
-      "INSERT INTO subcategories (CategoryID, Name, Image) VALUES (?, ?, ?)",
-      [jacketCatId, "Denim", ""],
-    );
-    const formalPantSub = await dbRun(
-      "INSERT INTO subcategories (CategoryID, Name, Image) VALUES (?, ?, ?)",
-      [pantCatId, "Formal", ""],
-    );
-    const casualPantSub = await dbRun(
-      "INSERT INTO subcategories (CategoryID, Name, Image) VALUES (?, ?, ?)",
-      [pantCatId, "Casual", ""],
-    );
-    const casualShirtSub = await dbRun(
-      "INSERT INTO subcategories (CategoryID, Name, Image) VALUES (?, ?, ?)",
-      [shirtCatId, "Casual", ""],
-    );
-    const formalShirtSub = await dbRun(
-      "INSERT INTO subcategories (CategoryID, Name, Image) VALUES (?, ?, ?)",
-      [shirtCatId, "Formal", ""],
-    );
-
-    const leatherSubId = leatherSub.id;
-    const denimSubId = denimSub.id;
-    const formalPantSubId = formalPantSub.id;
-    const casualPantSubId = casualPantSub.id;
-    const casualShirtSubId = casualShirtSub.id;
-    const formalShirtSubId = formalShirtSub.id;
-
-    // Items
-    await dbRun(
-      "INSERT INTO items (CategoryID, SubcatID, Name, UnitPrice, Notes) VALUES (?, ?, ?, ?, ?)",
-      [
-        jacketCatId,
-        leatherSubId,
-        "Black Leather Jacket",
-        120.0,
-        "Premium full-grain leather",
-      ],
-    );
-    await dbRun(
-      "INSERT INTO items (CategoryID, SubcatID, Name, UnitPrice, Notes) VALUES (?, ?, ?, ?, ?)",
-      [
-        jacketCatId,
-        leatherSubId,
-        "Brown Leather Jacket",
-        115.0,
-        "Vintage style",
-      ],
-    );
-    await dbRun(
-      "INSERT INTO items (CategoryID, SubcatID, Name, UnitPrice, Notes) VALUES (?, ?, ?, ?, ?)",
-      [jacketCatId, denimSubId, "Blue Denim Jacket", 80.0, "Classic fit"],
-    );
-    await dbRun(
-      "INSERT INTO items (CategoryID, SubcatID, Name, UnitPrice, Notes) VALUES (?, ?, ?, ?, ?)",
-      [pantCatId, formalPantSubId, "Black Dress Pants", 90.0, "Slim cut"],
-    );
-    await dbRun(
-      "INSERT INTO items (CategoryID, SubcatID, Name, UnitPrice, Notes) VALUES (?, ?, ?, ?, ?)",
-      [pantCatId, formalPantSubId, "Navy Dress Pants", 85.0, "Regular fit"],
-    );
-    await dbRun(
-      "INSERT INTO items (CategoryID, SubcatID, Name, UnitPrice, Notes) VALUES (?, ?, ?, ?, ?)",
-      [pantCatId, casualPantSubId, "Khaki Chinos", 65.0, ""],
-    );
-    await dbRun(
-      "INSERT INTO items (CategoryID, SubcatID, Name, UnitPrice, Notes) VALUES (?, ?, ?, ?, ?)",
-      [shirtCatId, formalShirtSubId, "White Dress Shirt", 55.0, "French cuff"],
-    );
-    await dbRun(
-      "INSERT INTO items (CategoryID, SubcatID, Name, UnitPrice, Notes) VALUES (?, ?, ?, ?, ?)",
-      [
-        shirtCatId,
-        casualShirtSubId,
-        "Oxford Shirt",
-        45.0,
-        "Button-down collar",
-      ],
-    );
-
-    // Customers
-    await dbRun(
-      "INSERT INTO customers (Name, Phone, Email, Address) VALUES (?, ?, ?, ?)",
-      ["Alice Smith", "555-0101", "alice@example.com", "123 Main St"],
-    );
-    await dbRun(
-      "INSERT INTO customers (Name, Phone, Email, Address) VALUES (?, ?, ?, ?)",
-      ["Bob Johnson", "555-0102", "bob@example.com", "456 Oak Ave"],
-    );
-    await dbRun(
-      "INSERT INTO customers (Name, Phone, Email, Address) VALUES (?, ?, ?, ?)",
-      ["Carol White", "555-0103", "carol@example.com", "789 Pine Rd"],
-    );
-    await dbRun(
-      "INSERT INTO customers (Name, Phone, Email, Address) VALUES (?, ?, ?, ?)",
-      ["David Brown", "555-0104", "david@example.com", "321 Elm St"],
-    );
-    await dbRun(
-      "INSERT INTO customers (Name, Phone, Email, Address) VALUES (?, ?, ?, ?)",
-      ["Emma Davis", "555-0105", "emma@example.com", "654 Maple Dr"],
-    );
 
     console.log("Database seeded successfully.");
   }
@@ -1175,6 +1077,71 @@ app.post("/api/auditlog", async (req, res) => {
       [UserID, Action, Timestamp, Details],
     );
     res.status(201).json(result.id);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Fabric Inventory CRUD
+app.get("/api/inventory", async (req, res) => {
+  try {
+    const list = await dbAll("SELECT * FROM fabric_inventory ORDER BY FabricID DESC");
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.get("/api/inventory/:id", async (req, res) => {
+  try {
+    const row = await dbGet("SELECT * FROM fabric_inventory WHERE FabricID = ?", [req.params.id]);
+    if (!row) return res.status(404).json({ message: "Fabric not found" });
+    res.json(row);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.post("/api/inventory", async (req, res) => {
+  const { Name, Code, Color, Count, Unit, Price, Remark } = req.body;
+  if (!Name) return res.status(400).json({ message: "Name is required" });
+  if (!Color) return res.status(400).json({ message: "Color is required" });
+  if (Count == null) return res.status(400).json({ message: "Count is required" });
+  if (Price == null) return res.status(400).json({ message: "Price is required" });
+  try {
+    const result = await dbRun(
+      "INSERT INTO fabric_inventory (Name, Code, Color, Count, Unit, Price, Remark) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [Name, Code || null, Color, Count, Unit || "yards", Price, Remark || null],
+    );
+    res.status(201).json(result.id);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.put("/api/inventory/:id", async (req, res) => {
+  const { Name, Code, Color, Count, Unit, Price, Remark } = req.body;
+  if (!Name) return res.status(400).json({ message: "Name is required" });
+  if (!Color) return res.status(400).json({ message: "Color is required" });
+  if (Count == null) return res.status(400).json({ message: "Count is required" });
+  if (Price == null) return res.status(400).json({ message: "Price is required" });
+  try {
+    const result = await dbRun(
+      "UPDATE fabric_inventory SET Name = ?, Code = ?, Color = ?, Count = ?, Unit = ?, Price = ?, Remark = ? WHERE FabricID = ?",
+      [Name, Code || null, Color, Count, Unit || "yards", Price, Remark || null, req.params.id],
+    );
+    if (result.changes === 0) return res.status(404).json({ message: "Fabric not found" });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.delete("/api/inventory/:id", async (req, res) => {
+  try {
+    const result = await dbRun("DELETE FROM fabric_inventory WHERE FabricID = ?", [req.params.id]);
+    if (result.changes === 0) return res.status(404).json({ message: "Fabric not found" });
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

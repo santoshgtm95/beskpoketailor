@@ -4,9 +4,12 @@
     <div class="order-main">
       <!-- Customer & Date -->
       <div class="card">
-        <div class="card-header">
+        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
           <div class="card-title">
             <span class="title-icon">👤</span> Customer &amp; Order Info
+          </div>
+          <div id="order-number-display" style="font-size:13px;font-weight:700;color:var(--gold);letter-spacing:0.5px;opacity:0.85;">
+            Order <span id="order-number-value">----</span>
           </div>
         </div>
         <div class="grid-2">

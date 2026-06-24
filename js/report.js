@@ -79,7 +79,7 @@ const ReportView = (() => {
 
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td>#${o.OrderID}</td>
+        <td>${fmtOrderId(o.OrderID)}</td>
         <td>${fmtDate(o.OrderDate)}</td>
         <td>${custName}</td>
         <td class="text-right">$${parseFloat(o.TotalAmount).toFixed(2)}</td>

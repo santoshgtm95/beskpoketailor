@@ -40,7 +40,7 @@ const DashboardPage = (() => {
         : recent
             .map(
               (o) => `<tr>
-          <td class="font-mono text-gold">#${o.OrderID}</td>
+          <td class="font-mono text-gold">${fmtOrderId(o.OrderID)}</td>
           <td>${sanitize(custMap[o.CustomerID]?.Name || "Unknown")}</td>
           <td>${fmtDate(o.OrderDate)}</td>
           <td class="text-right font-bold">${fmtCurrency(o.TotalAmount)}</td>
