@@ -63,6 +63,12 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
+// Ensure customer-images subfolder exists
+const customerImagesDir = path.join(uploadDir, "customer-images");
+if (!fs.existsSync(customerImagesDir)) {
+  fs.mkdirSync(customerImagesDir, { recursive: true });
+}
+
 // Multer Storage configuration for Subcategory images
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -75,6 +81,19 @@ const storage = multer.diskStorage({
   },
 });
 const upload = multer({ storage: storage });
+
+// Multer Storage configuration for Customer images
+const customerImageStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, customerImagesDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname);
+    cb(null, "customer-" + uniqueSuffix + ext);
+  },
+});
+const uploadCustomer = multer({ storage: customerImageStorage });
 
 const restoreUploadDir = path.join(DATA_DIR, "restore-upload-temp");
 if (!fs.existsSync(restoreUploadDir)) {
@@ -272,9 +291,18 @@ async function initDb() {
       Name TEXT NOT NULL,
       Phone TEXT,
       Email TEXT,
-      Address TEXT
+      Address TEXT,
+      Image TEXT
     )
   `);
+
+  // Migrate existing customers table to add Image column
+  try {
+    await dbRun("ALTER TABLE customers ADD COLUMN Image TEXT;");
+    console.log("Database migrated: Added Image column to customers.");
+  } catch (e) {
+    // Ignore error if column already exists
+  }
 
   await dbRun(`
     CREATE TABLE IF NOT EXISTS orders (
@@ -316,6 +344,7 @@ async function initDb() {
     "ALTER TABLE orders ADD COLUMN Deposit REAL DEFAULT 0",
     "ALTER TABLE orders ADD COLUMN Discount REAL DEFAULT 0",
     "ALTER TABLE orders ADD COLUMN RemainingBalance REAL DEFAULT 0",
+    "ALTER TABLE orders ADD COLUMN TransactionFee REAL DEFAULT 0",
   ];
   for (const sql of orderMigrations) {
     try {
@@ -488,12 +517,12 @@ app.get("/api/customers/:id", async (req, res) => {
 });
 
 app.post("/api/customers", async (req, res) => {
-  const { Name, Phone, Email, Address } = req.body;
+  const { Name, Phone, Email, Address, Image } = req.body;
   if (!Name) return res.status(400).json({ message: "Name is required" });
   try {
     const result = await dbRun(
-      "INSERT INTO customers (Name, Phone, Email, Address) VALUES (?, ?, ?, ?)",
-      [Name, Phone, Email, Address],
+      "INSERT INTO customers (Name, Phone, Email, Address, Image) VALUES (?, ?, ?, ?, ?)",
+      [Name, Phone, Email, Address, Image || null],
     );
     res.status(201).json(result.id);
   } catch (err) {
@@ -502,12 +531,12 @@ app.post("/api/customers", async (req, res) => {
 });
 
 app.put("/api/customers/:id", async (req, res) => {
-  const { Name, Phone, Email, Address } = req.body;
+  const { Name, Phone, Email, Address, Image } = req.body;
   if (!Name) return res.status(400).json({ message: "Name is required" });
   try {
     const result = await dbRun(
-      "UPDATE customers SET Name = ?, Phone = ?, Email = ?, Address = ? WHERE CustomerID = ?",
-      [Name, Phone, Email, Address, req.params.id],
+      "UPDATE customers SET Name = ?, Phone = ?, Email = ?, Address = ?, Image = ? WHERE CustomerID = ?",
+      [Name, Phone, Email, Address, Image || null, req.params.id],
     );
     if (result.changes === 0)
       return res.status(404).json({ message: "Customer not found" });
@@ -515,6 +544,14 @@ app.put("/api/customers/:id", async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
+});
+
+// Endpoint to upload a customer image
+app.post("/api/customers/upload", uploadCustomer.single("image"), (req, res) => {
+  if (!req.file)
+    return res.status(400).json({ message: "No file uploaded." });
+  const filePath = `/uploads/customer-images/${req.file.filename}`;
+  res.json({ filePath });
 });
 
 app.delete("/api/customers/:id", async (req, res) => {
@@ -779,6 +816,7 @@ app.post("/api/orders", async (req, res) => {
     Deposit,
     Discount,
     RemainingBalance,
+    TransactionFee,
   } = req.body;
   if (!CustomerID || !UserID || !OrderDate || TotalAmount === undefined) {
     return res.status(400).json({
@@ -787,7 +825,7 @@ app.post("/api/orders", async (req, res) => {
   }
   try {
     const result = await dbRun(
-      "INSERT INTO orders (CustomerID, UserID, OrderDate, TotalAmount, PaymentMethod, Deposit, Discount, RemainingBalance) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO orders (CustomerID, UserID, OrderDate, TotalAmount, PaymentMethod, Deposit, Discount, RemainingBalance, TransactionFee) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
       [
         CustomerID,
         UserID,
@@ -797,6 +835,7 @@ app.post("/api/orders", async (req, res) => {
         Deposit || 0,
         Discount || 0,
         RemainingBalance || 0,
+        TransactionFee || 0,
       ],
     );
     res.status(201).json(result.id);
@@ -815,6 +854,7 @@ app.put("/api/orders/:id", async (req, res) => {
     Deposit,
     Discount,
     RemainingBalance,
+    TransactionFee,
   } = req.body;
   if (!CustomerID || !UserID || !OrderDate || TotalAmount === undefined) {
     return res.status(400).json({
@@ -823,7 +863,7 @@ app.put("/api/orders/:id", async (req, res) => {
   }
   try {
     const result = await dbRun(
-      "UPDATE orders SET CustomerID = ?, UserID = ?, OrderDate = ?, TotalAmount = ?, PaymentMethod = ?, Deposit = ?, Discount = ?, RemainingBalance = ? WHERE OrderID = ?",
+      "UPDATE orders SET CustomerID = ?, UserID = ?, OrderDate = ?, TotalAmount = ?, PaymentMethod = ?, Deposit = ?, Discount = ?, RemainingBalance = ?, TransactionFee = ? WHERE OrderID = ?",
       [
         CustomerID,
         UserID,
@@ -833,6 +873,7 @@ app.put("/api/orders/:id", async (req, res) => {
         Deposit || 0,
         Discount || 0,
         RemainingBalance || 0,
+        TransactionFee || 0,
         req.params.id,
       ],
     );

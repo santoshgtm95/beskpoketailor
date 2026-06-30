@@ -222,10 +222,10 @@
             <input
               type="radio"
               name="order-payment-method"
-              id="payment-credit"
-              value="Credit"
+              id="payment-card"
+              value="Card"
             />
-            Credit
+            Card
           </label>
         </div>
 
@@ -285,6 +285,34 @@
             step="0.01"
             style="width: 130px; text-align: right; font-size: 14px"
           />
+        </div>
+
+        <!-- Card Transaction Fee (3.5%) -->
+        <div
+          id="order-fee-row"
+          style="
+            display: none;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-top: 8px;
+            margin-bottom: 8px;
+          "
+        >
+          <span
+            style="
+              font-size: 13px;
+              font-weight: 600;
+              color: var(--text-secondary);
+              white-space: nowrap;
+            "
+            >Card Fee (3.5%)</span
+          >
+          <span
+            id="order-transaction-fee"
+            style="font-size: 14px; font-weight: 600; color: var(--accent-red);"
+            >THB 0.00</span
+          >
         </div>
 
         <!-- Remaining Balance -->

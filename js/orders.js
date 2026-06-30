@@ -102,6 +102,44 @@ const OrdersPage = (() => {
     document
       .getElementById("order-discount")
       .addEventListener("input", updateRemainingBalance);
+
+    // Live recalculate remaining balance when payment method changes
+    document.querySelectorAll('input[name="order-payment-method"]').forEach((el) => {
+      el.addEventListener("change", updateRemainingBalance);
+    });
+
+    // Initialize Inline Customer Photo upload handler
+    const custImageFileInput = document.getElementById("cust-image-file");
+    if (custImageFileInput) {
+      custImageFileInput.addEventListener("change", async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        document.getElementById("cust-image-filename").textContent = file.name;
+
+        const formData = new FormData();
+        formData.append("image", file);
+
+        try {
+          Toast.info("Uploading photo…");
+          const res = await fetch("/api/customers/upload", {
+            method: "POST",
+            body: formData,
+          });
+          if (!res.ok) throw new Error("File upload failed on server.");
+          const data = await res.json();
+
+          document.getElementById("cust-image-url").value = data.filePath;
+          const preview = document.getElementById("cust-image-preview");
+          preview.src = data.filePath;
+          document.getElementById("cust-image-preview-wrap").style.display = "block";
+          Toast.success("Photo uploaded successfully!");
+        } catch (err) {
+          console.error("File upload failed:", err);
+          Toast.error("Failed to upload customer photo.");
+        }
+      });
+    }
   }
 
   // ── Picker Steps ──────────────────────────────────────────────
@@ -837,6 +875,19 @@ const OrdersPage = (() => {
     const remaining = Math.max(0, total - deposit - discount);
     document.getElementById("order-remaining-balance").textContent =
       fmtCurrency(remaining);
+
+    // Card transaction fee (3.5%) row handling
+    const pmRadio = document.querySelector('input[name="order-payment-method"]:checked');
+    const isCard = pmRadio && pmRadio.value === 'Card';
+    const feeRow = document.getElementById("order-fee-row");
+    
+    if (isCard) {
+      const fee = +(total * 0.035).toFixed(2);
+      document.getElementById("order-transaction-fee").textContent = fmtCurrency(fee);
+      if (feeRow) feeRow.style.display = "flex";
+    } else {
+      if (feeRow) feeRow.style.display = "none";
+    }
   }
 
   async function saveOrder() {
@@ -873,6 +924,7 @@ const OrdersPage = (() => {
       0,
       totalAmount - deposit - discount,
     ).toFixed(2);
+    const transactionFee = paymentMethod === "Card" ? +(totalAmount * 0.035).toFixed(2) : 0;
 
     try {
       let orderId;
@@ -887,6 +939,7 @@ const OrdersPage = (() => {
           Deposit: deposit,
           Discount: discount,
           RemainingBalance: remainingBalance,
+          TransactionFee: transactionFee,
         });
         await DB.orderlines.deleteByOrder(editingOrderId);
         orderId = editingOrderId;
@@ -900,6 +953,7 @@ const OrdersPage = (() => {
           Deposit: deposit,
           Discount: discount,
           RemainingBalance: remainingBalance,
+          TransactionFee: transactionFee,
         });
       }
 
@@ -978,8 +1032,9 @@ const OrdersPage = (() => {
     document.getElementById("order-date").value = order.OrderDate;
 
     // Restore payment fields
+    const paymentVal = order.PaymentMethod === "Credit" ? "Card" : (order.PaymentMethod || "Cash");
     const pmRadio = document.querySelector(
-      `input[name="order-payment-method"][value="${order.PaymentMethod || "Cash"}"]`,
+      `input[name="order-payment-method"][value="${paymentVal}"]`,
     );
     if (pmRadio) pmRadio.checked = true;
     document.getElementById("order-deposit").value = order.Deposit || "";
@@ -1045,6 +1100,11 @@ const OrdersPage = (() => {
       document.getElementById(id).value = "";
     });
     document.getElementById("cust-id-hidden").value = "";
+    document.getElementById("cust-image-file").value = "";
+    document.getElementById("cust-image-url").value = "";
+    document.getElementById("cust-image-filename").textContent = "No photo chosen";
+    document.getElementById("cust-image-preview").src = "";
+    document.getElementById("cust-image-preview-wrap").style.display = "none";
     clearValidation(document.getElementById("customer-form"));
   }
 
@@ -1058,6 +1118,7 @@ const OrdersPage = (() => {
       Phone: document.getElementById("cust-phone").value.trim(),
       Email: document.getElementById("cust-email").value.trim(),
       Address: document.getElementById("cust-address").value.trim(),
+      Image: document.getElementById("cust-image-url").value || null,
     };
 
     try {
@@ -1086,7 +1147,7 @@ const OrdersPage = (() => {
       printTotal = order.TotalAmount;
       printDate = order.OrderDate;
       printOrderId = order.OrderID;
-      printPaymentMethod = order.PaymentMethod || "Cash";
+      printPaymentMethod = order.PaymentMethod === "Credit" ? "Card" : (order.PaymentMethod || "Cash");
       printDeposit = order.Deposit || 0;
       printDiscount = order.Discount || 0;
       printRemainingBalance =

@@ -76,6 +76,7 @@ const ReportView = (() => {
     let totalOrders = orders.length;
     let totalRevenue = 0;
     let totalExpenses = 0;
+    let totalFees = 0;
 
     const tbody = document.getElementById("report-table-body");
     tbody.innerHTML = "";
@@ -84,22 +85,29 @@ const ReportView = (() => {
 
     orders.forEach((o) => {
       totalRevenue += o.TotalAmount || 0;
+      totalFees += o.TransactionFee || 0;
 
       const cust = customersList.find((c) => c.CustomerID === o.CustomerID);
       const custName = cust ? cust.Name : "Unknown";
+      
+      const paymentMethod = o.PaymentMethod === "Credit" ? "Card" : (o.PaymentMethod || "Cash");
+      const netAmount = (o.TotalAmount || 0) - (o.TransactionFee || 0);
 
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td>${fmtOrderId(o.OrderID)}</td>
         <td>${fmtDate(o.OrderDate)}</td>
         <td>${custName}</td>
+        <td><span class="badge ${paymentMethod === 'Card' ? 'badge-blue' : 'badge-green'}">${paymentMethod}</span></td>
         <td class="text-right">${fmtCurrency(o.TotalAmount)}</td>
+        <td class="text-right" style="color: var(--accent-red);">${o.TransactionFee > 0 ? fmtCurrency(o.TransactionFee) : '—'}</td>
+        <td class="text-right text-gold font-bold">${fmtCurrency(netAmount)}</td>
       `;
       tbody.appendChild(tr);
     });
 
     if (orders.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="4" class="text-center">No orders found for this period.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center">No orders found for this period.</td></tr>`;
     }
 
     expenses.forEach((e) => {
@@ -111,10 +119,13 @@ const ReportView = (() => {
       `${fmtCurrency(totalRevenue)}`;
     const expEl = document.getElementById("report-total-expenses");
     if (expEl) expEl.innerText = `${fmtCurrency(totalExpenses)}`;
+    
+    const feesEl = document.getElementById("report-total-fees");
+    if (feesEl) feesEl.innerText = `${fmtCurrency(totalFees)}`;
 
-    // Total Profit = Total Revenue - Total Expenses
+    // Total Profit = Total Revenue - Total Expenses - Total Card Fees
     const profitEl = document.getElementById("report-total-profit");
-    if (profitEl) profitEl.innerText = `${fmtCurrency(totalRevenue - totalExpenses)}`;
+    if (profitEl) profitEl.innerText = `${fmtCurrency(totalRevenue - totalExpenses - totalFees)}`;
 
     calculateItems(orders);
   }
