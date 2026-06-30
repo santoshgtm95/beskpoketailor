@@ -7,6 +7,7 @@ const ReportView = (() => {
   let ordersList = [];
   let customersList = [];
   let expensesList = [];
+  let fabricList = [];
 
   const fType = () => document.getElementById("report-filter-type");
   const fDaily = () => document.getElementById("report-daily-filter");
@@ -42,6 +43,7 @@ const ReportView = (() => {
       ordersList = await DB.orders.getAll();
       customersList = await DB.customers.getAll();
       expensesList = await DB.expenses.getAll();
+      fabricList = await DB.inventory.getAll().catch(() => []);
 
       const type = fType().value;
       let filtered = [];
@@ -89,8 +91,9 @@ const ReportView = (() => {
 
       const cust = customersList.find((c) => c.CustomerID === o.CustomerID);
       const custName = cust ? cust.Name : "Unknown";
-      
-      const paymentMethod = o.PaymentMethod === "Credit" ? "Card" : (o.PaymentMethod || "Cash");
+
+      const paymentMethod =
+        o.PaymentMethod === "Credit" ? "Card" : o.PaymentMethod || "Cash";
       const netAmount = (o.TotalAmount || 0) - (o.TransactionFee || 0);
 
       const tr = document.createElement("tr");
@@ -98,9 +101,9 @@ const ReportView = (() => {
         <td>${fmtOrderId(o.OrderID)}</td>
         <td>${fmtDate(o.OrderDate)}</td>
         <td>${custName}</td>
-        <td><span class="badge ${paymentMethod === 'Card' ? 'badge-blue' : 'badge-green'}">${paymentMethod}</span></td>
+        <td><span class="badge ${paymentMethod === "Card" ? "badge-blue" : "badge-green"}">${paymentMethod}</span></td>
         <td class="text-right">${fmtCurrency(o.TotalAmount)}</td>
-        <td class="text-right" style="color: var(--accent-red);">${o.TransactionFee > 0 ? fmtCurrency(o.TransactionFee) : '—'}</td>
+        <td class="text-right" style="color: var(--accent-red);">${o.TransactionFee > 0 ? fmtCurrency(o.TransactionFee) : "—"}</td>
         <td class="text-right text-gold font-bold">${fmtCurrency(netAmount)}</td>
       `;
       tbody.appendChild(tr);
@@ -119,22 +122,23 @@ const ReportView = (() => {
       `${fmtCurrency(totalRevenue)}`;
     const expEl = document.getElementById("report-total-expenses");
     if (expEl) expEl.innerText = `${fmtCurrency(totalExpenses)}`;
-    
+
     const feesEl = document.getElementById("report-total-fees");
     if (feesEl) feesEl.innerText = `${fmtCurrency(totalFees)}`;
 
-    // Total Profit = Total Revenue - Total Expenses - Total Card Fees
+    // Profit is finalized in calculateItems() once fabric cost is known
     const profitEl = document.getElementById("report-total-profit");
-    if (profitEl) profitEl.innerText = `${fmtCurrency(totalRevenue - totalExpenses - totalFees)}`;
+    if (profitEl) profitEl.innerText = fmtCurrency(0);
 
-    calculateItems(orders);
+    calculateItems(orders, totalRevenue, totalExpenses, totalFees);
   }
 
-  async function calculateItems(orders) {
+  async function calculateItems(orders, totalRevenue = 0, totalExpenses = 0, totalFees = 0) {
     let totalItems = 0;
     let totalJackets = 0;
     let totalPants = 0;
     let totalShirts = 0;
+    let totalFabricCost = 0;
 
     if (orders.length > 0) {
       const orderIds = orders.map((o) => o.OrderID);
@@ -145,6 +149,10 @@ const ReportView = (() => {
         orderIds.includes(line.OrderID),
       );
 
+      const fabricMap = Object.fromEntries(
+        fabricList.map((f) => [f.FabricID, f]),
+      );
+
       relevantLines.forEach((line) => {
         const qty = line.Quantity || 1;
         totalItems += qty;
@@ -153,6 +161,14 @@ const ReportView = (() => {
         if (line.CategoryID === 1) totalJackets += qty;
         else if (line.CategoryID === 2) totalPants += qty;
         else if (line.CategoryID === 3) totalShirts += qty;
+
+        // Fabric cost: UseCount × fabric unit price
+        if (line.FabricID && line.UseCount > 0) {
+          const fabric = fabricMap[line.FabricID];
+          if (fabric && fabric.Price > 0) {
+            totalFabricCost += line.UseCount * fabric.Price;
+          }
+        }
       });
     }
 
@@ -160,6 +176,14 @@ const ReportView = (() => {
     document.getElementById("report-total-jackets").innerText = totalJackets;
     document.getElementById("report-total-pants").innerText = totalPants;
     document.getElementById("report-total-shirts").innerText = totalShirts;
+
+    const fabricCostEl = document.getElementById("report-total-fabric-cost");
+    if (fabricCostEl) fabricCostEl.innerText = fmtCurrency(totalFabricCost);
+
+    // Total Profit = Total Revenue - (Total Expenses + Total Fabric Cost + Total Card Fees)
+    const profitEl = document.getElementById("report-total-profit");
+    if (profitEl)
+      profitEl.innerText = fmtCurrency(totalRevenue - totalExpenses - totalFabricCost - totalFees);
   }
 
   return { init, onFilterTypeChange, loadData };

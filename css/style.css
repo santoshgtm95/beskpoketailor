@@ -904,10 +904,10 @@ table.data-table tbody tr:last-child td {
   overflow-y: auto;
 }
 .modal.modal-subcategory-details {
-  width: 98vw;
-  max-width: 98vw;
-  height: 96vh;
-  max-height: 96vh;
+  width: 75vw;
+  max-width: 75vw;
+  height: 90vh;
+  max-height: 90vh;
   margin: 10px auto;
   display: flex;
   flex-direction: column;
