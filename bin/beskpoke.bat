@@ -23,6 +23,9 @@ REM Try to find bundled Node.js first
 if exist "!APP_DIR!node-portable\node.exe" (
     set "NODE_PATH=!APP_DIR!node-portable\node.exe"
     echo [OK] Using bundled Node.js
+) else if exist "!APP_DIR!bin\node-portable\node.exe" (
+    set "NODE_PATH=!APP_DIR!bin\node-portable\node.exe"
+    echo [OK] Using bundled Node.js
 ) else if exist "!APP_DIR!node\node.exe" (
     set "NODE_PATH=!APP_DIR!node\node.exe"
     echo [OK] Using bundled Node.js
@@ -75,6 +78,8 @@ if not exist "node_modules\" (
     REM Use npm from the bundled Node.js if available
     if exist "!APP_DIR!node-portable\npm.cmd" (
         call "!APP_DIR!node-portable\npm.cmd" install
+    ) else if exist "!APP_DIR!bin\node-portable\npm.cmd" (
+        call "!APP_DIR!bin\node-portable\npm.cmd" install
     ) else (
         call npm install
     )

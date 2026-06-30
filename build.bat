@@ -36,6 +36,12 @@ if not exist "node_modules" (
 
 REM Create the executable batch wrapper
 echo Creating executable wrapper...
+node scripts/ensure-node-portable.js
+if !errorlevel! neq 0 (
+    echo ERROR: Failed to ensure Node.js portable exists
+    pause
+    exit /b 1
+)
 node scripts/build-exe.js
 if !errorlevel! neq 0 (
     echo ERROR: Failed to create executable

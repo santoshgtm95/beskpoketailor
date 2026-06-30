@@ -49,48 +49,18 @@ echo This makes the installer larger but completely standalone.
 echo.
 set /p BUNDLE_NODE="Bundle Node.js portable with installer? (y/n): "
 if /i "!BUNDLE_NODE!"=="y" (
-    echo.
-    echo Downloading Node.js %NODE_VERSION%...
-    echo This may take a few minutes...
-    echo.
-    
-    if not exist "!NODE_PORTABLE_DIR!" (
-        mkdir "!NODE_PORTABLE_DIR!"
-    )
-    
-    powershell -Command "[System.Net.ServicePointManager]::SecurityProtocol = 3072; (New-Object System.Net.WebClient).DownloadFile('!NODE_ZIP_URL!', 'bin\node-portable.zip')" 2>nul
-    
+    node scripts/ensure-node-portable.js
     if !errorlevel! neq 0 (
-        echo Using curl instead...
-        curl -L -o bin\node-portable.zip !NODE_ZIP_URL!
-    )
-    
-    if !errorlevel! equ 0 (
-        echo Extracting Node.js...
-        powershell -Command "Expand-Archive -Path 'bin\node-portable.zip' -DestinationPath 'bin\node-portable' -Force"
-        
-        REM Rename the extracted folder
-        cd bin\node-portable
-        for /d %%D in (node-*) do (
-            REM Move contents up one level
-            for /r "%%D" %%F in (*) do (
-                if not exist "%%~pF.." mkdir "%%~pF.."
-            )
-            cd ..
-            move "%%D\*" .
-            rmdir "%%D"
-            cd node-portable
-        )
-        cd ..\..
-        
-        del bin\node-portable.zip
-        echo ✓ Node.js bundled successfully!
-    ) else (
-        echo WARNING: Failed to download Node.js
-        echo Continuing without bundled Node.js...
+        echo ERROR: Failed to bundle Node.js portable.
+        pause
+        exit /b 1
     )
 ) else (
     echo Skipping Node.js bundling.
+    if exist "!NODE_PORTABLE_DIR!" (
+        echo [INFO] Removing existing node-portable directory to avoid bundling...
+        rmdir /s /q "!NODE_PORTABLE_DIR!"
+    )
 )
 
 REM Step 5: Create the installer
