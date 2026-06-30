@@ -19,11 +19,11 @@ const ReportView = (() => {
 
   async function init() {
     // Current date setup
-    const now = new Date();
+    const today = todayStr();
 
-    valDate().value = now.toISOString().split("T")[0];
-    valMonth().value = now.toISOString().slice(0, 7); // YYYY-MM
-    valYear().value = now.getFullYear();
+    valDate().value = today;
+    valMonth().value = today.slice(0, 7); // YYYY-MM
+    valYear().value = today.slice(0, 4);
 
     onFilterTypeChange();
     await loadData();

@@ -5,15 +5,38 @@
 
 const InventoryPage = (() => {
   let allFabrics = [];
+  let usedCountByFabricId = new Map();
   let editId = null;
   let currentPage = 1;
   const PER_PAGE = 10;
 
   async function load() {
     allFabrics = await DB.inventory.getAll();
+    const orderLines = await DB.orderlines.getAll().catch(() => []);
+    usedCountByFabricId = new Map();
+
+    for (const line of orderLines) {
+      if (!line.FabricID || line.UseCount == null || line.UseCount <= 0) {
+        continue;
+      }
+
+      const currentUsed = usedCountByFabricId.get(line.FabricID) || 0;
+      usedCountByFabricId.set(
+        line.FabricID,
+        currentUsed + Number(line.UseCount),
+      );
+    }
+
     currentPage = 1;
     render();
     document.getElementById("inventory-search").oninput = render;
+  }
+
+  function formatCount(value) {
+    return Number(value || 0).toLocaleString("en-US", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    });
   }
 
   function render() {
@@ -36,23 +59,31 @@ const InventoryPage = (() => {
     const tbody = document.getElementById("inventory-tbody");
     tbody.innerHTML =
       paged.length === 0
-        ? `<tr><td colspan="8" class="table-empty"><div class="empty-icon">🧶</div>No fabrics found.</td></tr>`
+        ? `<tr><td colspan="10" class="table-empty"><div class="empty-icon">🧶</div>No fabrics found.</td></tr>`
         : paged
-            .map(
-              (f) => `<tr>
+            .map((f) => {
+              const remainingCount = Number(f.Count || 0);
+              const usedCount = Number(
+                usedCountByFabricId.get(f.FabricID) || 0,
+              );
+              const registeredCount = remainingCount + usedCount;
+
+              return `<tr>
           <td class="font-mono text-muted">#${f.FabricID}</td>
           <td><strong>${sanitize(f.Name)}</strong></td>
           <td class="text-muted">${sanitize(f.Code || "—")}</td>
           <td>${sanitize(f.Color)}</td>
-          <td class="text-right">${f.Count} ${sanitize(f.Unit)}</td>
+          <td class="text-right">${formatCount(registeredCount)} ${sanitize(f.Unit)}</td>
+          <td class="text-right">${formatCount(usedCount)} ${sanitize(f.Unit)}</td>
+          <td class="text-right">${formatCount(remainingCount)} ${sanitize(f.Unit)}</td>
           <td class="text-right">${fmtCurrency(f.Price)}   </td>
           <td class="text-muted">${sanitize(f.Remark || "—")}</td>
           <td class="text-right">
             <button class="btn btn-ghost btn-sm" onclick="InventoryPage.edit(${f.FabricID})">✏️</button>
             ${Auth.isAdmin() ? `<button class="btn btn-danger btn-sm" onclick="InventoryPage.delete(${f.FabricID})">🗑</button>` : ""}
           </td>
-        </tr>`,
-            )
+        </tr>`;
+            })
             .join("");
 
     document.getElementById("inventory-count").textContent = total;

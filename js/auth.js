@@ -4,11 +4,17 @@
  */
 
 const Auth = (() => {
-  const SESSION_KEY = 'beskpoke_session';
+  const SESSION_KEY = "beskpoke_session";
   let _currentUser = null;
 
   function saveSession(user) {
-    const safe = { UserID: user.UserID, Username: user.Username, Name: user.Name, Role: user.Role, Email: user.Email };
+    const safe = {
+      UserID: user.UserID,
+      Username: user.Username,
+      Name: user.Name,
+      Role: user.Role,
+      Email: user.Email,
+    };
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(safe));
     _currentUser = safe;
   }
@@ -17,7 +23,9 @@ const Auth = (() => {
     try {
       const raw = sessionStorage.getItem(SESSION_KEY);
       if (raw) _currentUser = JSON.parse(raw);
-    } catch { _currentUser = null; }
+    } catch {
+      _currentUser = null;
+    }
     return _currentUser;
   }
 
@@ -28,14 +36,15 @@ const Auth = (() => {
 
   async function login(username, password) {
     const user = await DB.users.findByUsername(username);
-    if (!user) throw new Error('Invalid username or password.');
+    if (!user) throw new Error("Invalid username or password.");
     // Simple comparison (production would use bcrypt)
-    if (user.PasswordHash !== password) throw new Error('Invalid username or password.');
+    if (user.PasswordHash !== password)
+      throw new Error("Invalid username or password.");
     saveSession(user);
     await DB.auditlog.add({
       UserID: user.UserID,
-      Action: 'Login',
-      Timestamp: new Date().toISOString(),
+      Action: "Login",
+      Timestamp: bangkokNowIso(),
       Details: `Admin logged in: ${user.Username}`,
     });
     return user;
@@ -45,17 +54,23 @@ const Auth = (() => {
     if (_currentUser) {
       await DB.auditlog.add({
         UserID: _currentUser.UserID,
-        Action: 'Logout',
-        Timestamp: new Date().toISOString(),
+        Action: "Logout",
+        Timestamp: bangkokNowIso(),
         Details: `User logged out: ${_currentUser.Username}`,
       });
     }
     clearSession();
   }
 
-  function currentUser() { return _currentUser; }
-  function isLoggedIn()  { return !!_currentUser; }
-  function isAdmin()     { return _currentUser?.Role === 'Admin'; }
+  function currentUser() {
+    return _currentUser;
+  }
+  function isLoggedIn() {
+    return !!_currentUser;
+  }
+  function isAdmin() {
+    return _currentUser?.Role === "Admin";
+  }
 
   return { login, logout, currentUser, isLoggedIn, isAdmin, loadSession };
 })();

@@ -104,9 +104,11 @@ const OrdersPage = (() => {
       .addEventListener("input", updateRemainingBalance);
 
     // Live recalculate remaining balance when payment method changes
-    document.querySelectorAll('input[name="order-payment-method"]').forEach((el) => {
-      el.addEventListener("change", updateRemainingBalance);
-    });
+    document
+      .querySelectorAll('input[name="order-payment-method"]')
+      .forEach((el) => {
+        el.addEventListener("change", updateRemainingBalance);
+      });
 
     // Initialize Inline Customer Photo upload handler
     const custImageFileInput = document.getElementById("cust-image-file");
@@ -132,7 +134,8 @@ const OrdersPage = (() => {
           document.getElementById("cust-image-url").value = data.filePath;
           const preview = document.getElementById("cust-image-preview");
           preview.src = data.filePath;
-          document.getElementById("cust-image-preview-wrap").style.display = "block";
+          document.getElementById("cust-image-preview-wrap").style.display =
+            "block";
           Toast.success("Photo uploaded successfully!");
         } catch (err) {
           console.error("File upload failed:", err);
@@ -204,7 +207,8 @@ const OrdersPage = (() => {
     const placeholder = '<option value="">— Select fabric —</option>';
     if (available.length === 0) {
       sel.innerHTML =
-        placeholder + '<option value="" disabled>(no fabrics in stock)</option>';
+        placeholder +
+        '<option value="" disabled>(no fabrics in stock)</option>';
     } else {
       sel.innerHTML =
         placeholder +
@@ -877,13 +881,16 @@ const OrdersPage = (() => {
       fmtCurrency(remaining);
 
     // Card transaction fee (3.5%) row handling
-    const pmRadio = document.querySelector('input[name="order-payment-method"]:checked');
-    const isCard = pmRadio && pmRadio.value === 'Card';
+    const pmRadio = document.querySelector(
+      'input[name="order-payment-method"]:checked',
+    );
+    const isCard = pmRadio && pmRadio.value === "Card";
     const feeRow = document.getElementById("order-fee-row");
-    
+
     if (isCard) {
       const fee = +(total * 0.035).toFixed(2);
-      document.getElementById("order-transaction-fee").textContent = fmtCurrency(fee);
+      document.getElementById("order-transaction-fee").textContent =
+        fmtCurrency(fee);
       if (feeRow) feeRow.style.display = "flex";
     } else {
       if (feeRow) feeRow.style.display = "none";
@@ -924,7 +931,8 @@ const OrdersPage = (() => {
       0,
       totalAmount - deposit - discount,
     ).toFixed(2);
-    const transactionFee = paymentMethod === "Card" ? +(totalAmount * 0.035).toFixed(2) : 0;
+    const transactionFee =
+      paymentMethod === "Card" ? +(totalAmount * 0.035).toFixed(2) : 0;
 
     try {
       let orderId;
@@ -1032,7 +1040,8 @@ const OrdersPage = (() => {
     document.getElementById("order-date").value = order.OrderDate;
 
     // Restore payment fields
-    const paymentVal = order.PaymentMethod === "Credit" ? "Card" : (order.PaymentMethod || "Cash");
+    const paymentVal =
+      order.PaymentMethod === "Credit" ? "Card" : order.PaymentMethod || "Cash";
     const pmRadio = document.querySelector(
       `input[name="order-payment-method"][value="${paymentVal}"]`,
     );
@@ -1102,7 +1111,8 @@ const OrdersPage = (() => {
     document.getElementById("cust-id-hidden").value = "";
     document.getElementById("cust-image-file").value = "";
     document.getElementById("cust-image-url").value = "";
-    document.getElementById("cust-image-filename").textContent = "No photo chosen";
+    document.getElementById("cust-image-filename").textContent =
+      "No photo chosen";
     document.getElementById("cust-image-preview").src = "";
     document.getElementById("cust-image-preview-wrap").style.display = "none";
     clearValidation(document.getElementById("customer-form"));
@@ -1147,7 +1157,10 @@ const OrdersPage = (() => {
       printTotal = order.TotalAmount;
       printDate = order.OrderDate;
       printOrderId = order.OrderID;
-      printPaymentMethod = order.PaymentMethod === "Credit" ? "Card" : (order.PaymentMethod || "Cash");
+      printPaymentMethod =
+        order.PaymentMethod === "Credit"
+          ? "Card"
+          : order.PaymentMethod || "Cash";
       printDeposit = order.Deposit || 0;
       printDiscount = order.Discount || 0;
       printRemainingBalance =
@@ -1308,7 +1321,11 @@ const OrdersPage = (() => {
 
   async function loadHistory() {
     allOrders = await DB.orders.getAll();
-    allOrders.sort((a, b) => new Date(b.OrderDate) - new Date(a.OrderDate));
+    allOrders.sort((a, b) => {
+      const aStamp = a.CreatedAt || `${a.OrderDate}T00:00:00+07:00`;
+      const bStamp = b.CreatedAt || `${b.OrderDate}T00:00:00+07:00`;
+      return new Date(bStamp) - new Date(aStamp);
+    });
     historyPage = 1;
     renderHistory();
   }
@@ -1354,7 +1371,7 @@ const OrdersPage = (() => {
 
     const tbody = document.getElementById("history-tbody");
     if (paged.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" class="table-empty">
+      tbody.innerHTML = `<tr><td colspan="7" class="table-empty">
         <div class="empty-icon">📋</div>No orders found.</td></tr>`;
     } else {
       tbody.innerHTML = paged
@@ -1383,6 +1400,7 @@ const OrdersPage = (() => {
           return `<tr>
           <td class="font-mono" style="color: var(--text-primary)">${fmtOrderId(o.OrderID)}</td>
           <td>${fmtDate(o.OrderDate)}</td>
+            <td>${fmtDateTime(o.CreatedAt || `${o.OrderDate}T00:00:00+07:00`)}</td>
           <td><strong>${sanitize(cust?.Name || "Unknown")}</strong><br>
               <small class="text-muted">${sanitize(cust?.Phone || "")}</small></td>
           <td class="text-muted"><strong>${itemsCount} item${itemsCount !== 1 ? "s" : ""}</strong><br>
@@ -1449,7 +1467,8 @@ const OrdersPage = (() => {
         for (let i = 1; i < parts.length; i++) {
           // Skip fabric info in Description since we show it separately via DB fields
           const p = parts[i];
-          if (p.startsWith("Fabric: ") || p.startsWith("Fabric Used: ")) continue;
+          if (p.startsWith("Fabric: ") || p.startsWith("Fabric Used: "))
+            continue;
           formattedDesc += `<li style="margin-bottom: 4px;">${sanitize(p)}</li>`;
         }
         formattedDesc += `</ul>`;
@@ -1467,11 +1486,14 @@ const OrdersPage = (() => {
 
     const deposit = order.Deposit || 0;
     const discount = order.Discount || 0;
+    const transactionFee = order.TransactionFee || 0;
     const remaining =
       order.RemainingBalance != null
         ? order.RemainingBalance
         : Math.max(0, total - deposit - discount);
-    const paymentMethod = order.PaymentMethod || "Cash";
+    const paymentMethod =
+      order.PaymentMethod === "Credit" ? "Card" : order.PaymentMethod || "Cash";
+    const showCardFee = transactionFee > 0 || paymentMethod === "Card";
 
     document.getElementById("view-order-content").innerHTML = `
       <div class="grid-2 mb-3" style="background: var(--bg-panel); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border);">
@@ -1502,6 +1524,14 @@ const OrdersPage = (() => {
           <div style="font-size:13px;color:var(--text-secondary);">Payment Method</div>
           <div style="font-size:13px;font-weight:600;">${sanitize(paymentMethod)}</div>
         </div>
+        ${
+          showCardFee
+            ? `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);">
+          <div style="font-size:13px;color:var(--text-secondary);">Card Fee (3.5%)</div>
+          <div style="font-size:13px;font-weight:600;color:var(--accent-red);">${fmtCurrency(transactionFee)}</div>
+        </div>`
+            : ""
+        }
         <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);">
           <div style="font-size:13px;color:var(--text-secondary);">Paid Amount</div>
           <div style="font-size:13px;font-weight:600;">${fmtCurrency(deposit)}</div>

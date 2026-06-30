@@ -104,6 +104,12 @@ const restoreUpload = multer({
   limits: { fileSize: 500 * 1024 * 1024 },
 });
 
+function bangkokNowIso() {
+  return new Date(Date.now() + 7 * 60 * 60 * 1000)
+    .toISOString()
+    .replace(/Z$/, "+07:00");
+}
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -310,6 +316,7 @@ async function initDb() {
       CustomerID INTEGER NOT NULL,
       UserID INTEGER NOT NULL,
       OrderDate TEXT NOT NULL,
+      CreatedAt TEXT,
       TotalAmount REAL NOT NULL,
       PaymentMethod TEXT DEFAULT 'Cash',
       Deposit REAL DEFAULT 0,
@@ -345,6 +352,7 @@ async function initDb() {
     "ALTER TABLE orders ADD COLUMN Discount REAL DEFAULT 0",
     "ALTER TABLE orders ADD COLUMN RemainingBalance REAL DEFAULT 0",
     "ALTER TABLE orders ADD COLUMN TransactionFee REAL DEFAULT 0",
+    "ALTER TABLE orders ADD COLUMN CreatedAt TEXT",
   ];
   for (const sql of orderMigrations) {
     try {
@@ -352,6 +360,14 @@ async function initDb() {
     } catch (e) {
       /* column already exists */
     }
+  }
+
+  try {
+    await dbRun(
+      "UPDATE orders SET CreatedAt = COALESCE(CreatedAt, OrderDate || 'T00:00:00+07:00') WHERE CreatedAt IS NULL OR CreatedAt = ''",
+    );
+  } catch (e) {
+    /* ignore backfill issues */
   }
 
   // Migrate existing databases: add new columns if not present
@@ -443,7 +459,9 @@ async function initDb() {
       Count REAL NOT NULL,
       Unit TEXT NOT NULL DEFAULT 'yards',
       Price REAL NOT NULL,
-      Remark TEXT
+      Remark TEXT,
+      CreatedAt TEXT,
+      UpdatedAt TEXT
     )
   `);
 
@@ -453,9 +471,53 @@ async function initDb() {
       ExpenseDate TEXT NOT NULL,
       Name TEXT NOT NULL,
       Amount REAL NOT NULL,
-      Remark TEXT
+      Remark TEXT,
+      CreatedAt TEXT,
+      UpdatedAt TEXT
     )
   `);
+
+  const inventoryMigrations = [
+    "ALTER TABLE fabric_inventory ADD COLUMN CreatedAt TEXT",
+    "ALTER TABLE fabric_inventory ADD COLUMN UpdatedAt TEXT",
+  ];
+  for (const sql of inventoryMigrations) {
+    try {
+      await dbRun(sql);
+    } catch (e) {
+      /* column already exists */
+    }
+  }
+
+  const expenseMigrations = [
+    "ALTER TABLE expenses ADD COLUMN CreatedAt TEXT",
+    "ALTER TABLE expenses ADD COLUMN UpdatedAt TEXT",
+  ];
+  for (const sql of expenseMigrations) {
+    try {
+      await dbRun(sql);
+    } catch (e) {
+      /* column already exists */
+    }
+  }
+
+  try {
+    await dbRun(
+      "UPDATE fabric_inventory SET CreatedAt = COALESCE(CreatedAt, ?), UpdatedAt = COALESCE(UpdatedAt, ?) WHERE CreatedAt IS NULL OR CreatedAt = '' OR UpdatedAt IS NULL OR UpdatedAt = ''",
+      [bangkokNowIso(), bangkokNowIso()],
+    );
+  } catch (e) {
+    /* ignore backfill issues */
+  }
+
+  try {
+    await dbRun(
+      "UPDATE expenses SET CreatedAt = COALESCE(CreatedAt, ?), UpdatedAt = COALESCE(UpdatedAt, ?) WHERE CreatedAt IS NULL OR CreatedAt = '' OR UpdatedAt IS NULL OR UpdatedAt = ''",
+      [bangkokNowIso(), bangkokNowIso()],
+    );
+  } catch (e) {
+    /* ignore backfill issues */
+  }
 
   // Seeding default data if no users exist
   const userCount = await dbGet("SELECT COUNT(*) as count FROM users");
@@ -491,7 +553,7 @@ async function initDb() {
 
 // Status check endpoint
 app.get("/api/status", (req, res) => {
-  res.json({ status: "ok", time: new Date().toISOString() });
+  res.json({ status: "ok", time: bangkokNowIso() });
 });
 
 // Customers CRUD
@@ -547,12 +609,16 @@ app.put("/api/customers/:id", async (req, res) => {
 });
 
 // Endpoint to upload a customer image
-app.post("/api/customers/upload", uploadCustomer.single("image"), (req, res) => {
-  if (!req.file)
-    return res.status(400).json({ message: "No file uploaded." });
-  const filePath = `/uploads/customer-images/${req.file.filename}`;
-  res.json({ filePath });
-});
+app.post(
+  "/api/customers/upload",
+  uploadCustomer.single("image"),
+  (req, res) => {
+    if (!req.file)
+      return res.status(400).json({ message: "No file uploaded." });
+    const filePath = `/uploads/customer-images/${req.file.filename}`;
+    res.json({ filePath });
+  },
+);
 
 app.delete("/api/customers/:id", async (req, res) => {
   try {
@@ -811,6 +877,7 @@ app.post("/api/orders", async (req, res) => {
     CustomerID,
     UserID,
     OrderDate,
+    CreatedAt,
     TotalAmount,
     PaymentMethod,
     Deposit,
@@ -824,12 +891,14 @@ app.post("/api/orders", async (req, res) => {
     });
   }
   try {
+    const createdAt = CreatedAt || bangkokNowIso();
     const result = await dbRun(
-      "INSERT INTO orders (CustomerID, UserID, OrderDate, TotalAmount, PaymentMethod, Deposit, Discount, RemainingBalance, TransactionFee) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO orders (CustomerID, UserID, OrderDate, CreatedAt, TotalAmount, PaymentMethod, Deposit, Discount, RemainingBalance, TransactionFee) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       [
         CustomerID,
         UserID,
         OrderDate,
+        createdAt,
         TotalAmount,
         PaymentMethod || "Cash",
         Deposit || 0,
@@ -849,6 +918,7 @@ app.put("/api/orders/:id", async (req, res) => {
     CustomerID,
     UserID,
     OrderDate,
+    CreatedAt,
     TotalAmount,
     PaymentMethod,
     Deposit,
@@ -1165,15 +1235,14 @@ app.get("/api/auditlog", async (req, res) => {
 
 app.post("/api/auditlog", async (req, res) => {
   const { UserID, Action, Timestamp, Details } = req.body;
-  if (!Action || !Timestamp) {
-    return res
-      .status(400)
-      .json({ message: "Action and Timestamp are required" });
+  const createdTimestamp = Timestamp || bangkokNowIso();
+  if (!Action) {
+    return res.status(400).json({ message: "Action is required" });
   }
   try {
     const result = await dbRun(
       "INSERT INTO auditlog (UserID, Action, Timestamp, Details) VALUES (?, ?, ?, ?)",
-      [UserID, Action, Timestamp, Details],
+      [UserID, Action, createdTimestamp, Details],
     );
     res.status(201).json(result.id);
   } catch (err) {
@@ -1184,7 +1253,9 @@ app.post("/api/auditlog", async (req, res) => {
 // Fabric Inventory CRUD
 app.get("/api/inventory", async (req, res) => {
   try {
-    const list = await dbAll("SELECT * FROM fabric_inventory ORDER BY FabricID DESC");
+    const list = await dbAll(
+      "SELECT * FROM fabric_inventory ORDER BY FabricID DESC",
+    );
     res.json(list);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -1193,7 +1264,10 @@ app.get("/api/inventory", async (req, res) => {
 
 app.get("/api/inventory/:id", async (req, res) => {
   try {
-    const row = await dbGet("SELECT * FROM fabric_inventory WHERE FabricID = ?", [req.params.id]);
+    const row = await dbGet(
+      "SELECT * FROM fabric_inventory WHERE FabricID = ?",
+      [req.params.id],
+    );
     if (!row) return res.status(404).json({ message: "Fabric not found" });
     res.json(row);
   } catch (err) {
@@ -1205,12 +1279,25 @@ app.post("/api/inventory", async (req, res) => {
   const { Name, Code, Color, Count, Unit, Price, Remark } = req.body;
   if (!Name) return res.status(400).json({ message: "Name is required" });
   if (!Color) return res.status(400).json({ message: "Color is required" });
-  if (Count == null) return res.status(400).json({ message: "Count is required" });
-  if (Price == null) return res.status(400).json({ message: "Price is required" });
+  if (Count == null)
+    return res.status(400).json({ message: "Count is required" });
+  if (Price == null)
+    return res.status(400).json({ message: "Price is required" });
   try {
+    const createdAt = bangkokNowIso();
     const result = await dbRun(
-      "INSERT INTO fabric_inventory (Name, Code, Color, Count, Unit, Price, Remark) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      [Name, Code || null, Color, Count, Unit || "yards", Price, Remark || null],
+      "INSERT INTO fabric_inventory (Name, Code, Color, Count, Unit, Price, Remark, CreatedAt, UpdatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      [
+        Name,
+        Code || null,
+        Color,
+        Count,
+        Unit || "yards",
+        Price,
+        Remark || null,
+        createdAt,
+        createdAt,
+      ],
     );
     res.status(201).json(result.id);
   } catch (err) {
@@ -1222,14 +1309,28 @@ app.put("/api/inventory/:id", async (req, res) => {
   const { Name, Code, Color, Count, Unit, Price, Remark } = req.body;
   if (!Name) return res.status(400).json({ message: "Name is required" });
   if (!Color) return res.status(400).json({ message: "Color is required" });
-  if (Count == null) return res.status(400).json({ message: "Count is required" });
-  if (Price == null) return res.status(400).json({ message: "Price is required" });
+  if (Count == null)
+    return res.status(400).json({ message: "Count is required" });
+  if (Price == null)
+    return res.status(400).json({ message: "Price is required" });
   try {
+    const updatedAt = bangkokNowIso();
     const result = await dbRun(
-      "UPDATE fabric_inventory SET Name = ?, Code = ?, Color = ?, Count = ?, Unit = ?, Price = ?, Remark = ? WHERE FabricID = ?",
-      [Name, Code || null, Color, Count, Unit || "yards", Price, Remark || null, req.params.id],
+      "UPDATE fabric_inventory SET Name = ?, Code = ?, Color = ?, Count = ?, Unit = ?, Price = ?, Remark = ?, UpdatedAt = ? WHERE FabricID = ?",
+      [
+        Name,
+        Code || null,
+        Color,
+        Count,
+        Unit || "yards",
+        Price,
+        Remark || null,
+        updatedAt,
+        req.params.id,
+      ],
     );
-    if (result.changes === 0) return res.status(404).json({ message: "Fabric not found" });
+    if (result.changes === 0)
+      return res.status(404).json({ message: "Fabric not found" });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -1238,8 +1339,12 @@ app.put("/api/inventory/:id", async (req, res) => {
 
 app.delete("/api/inventory/:id", async (req, res) => {
   try {
-    const result = await dbRun("DELETE FROM fabric_inventory WHERE FabricID = ?", [req.params.id]);
-    if (result.changes === 0) return res.status(404).json({ message: "Fabric not found" });
+    const result = await dbRun(
+      "DELETE FROM fabric_inventory WHERE FabricID = ?",
+      [req.params.id],
+    );
+    if (result.changes === 0)
+      return res.status(404).json({ message: "Fabric not found" });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -1258,7 +1363,9 @@ app.get("/api/expenses", async (req, res) => {
 
 app.get("/api/expenses/:id", async (req, res) => {
   try {
-    const row = await dbGet("SELECT * FROM expenses WHERE ExpenseID = ?", [req.params.id]);
+    const row = await dbGet("SELECT * FROM expenses WHERE ExpenseID = ?", [
+      req.params.id,
+    ]);
     if (!row) return res.status(404).json({ message: "Expense not found" });
     res.json(row);
   } catch (err) {
@@ -1268,13 +1375,16 @@ app.get("/api/expenses/:id", async (req, res) => {
 
 app.post("/api/expenses", async (req, res) => {
   const { ExpenseDate, Name, Amount, Remark } = req.body;
-  if (!ExpenseDate) return res.status(400).json({ message: "ExpenseDate is required" });
+  if (!ExpenseDate)
+    return res.status(400).json({ message: "ExpenseDate is required" });
   if (!Name) return res.status(400).json({ message: "Name is required" });
-  if (Amount == null) return res.status(400).json({ message: "Amount is required" });
+  if (Amount == null)
+    return res.status(400).json({ message: "Amount is required" });
   try {
+    const createdAt = bangkokNowIso();
     const result = await dbRun(
-      "INSERT INTO expenses (ExpenseDate, Name, Amount, Remark) VALUES (?, ?, ?, ?)",
-      [ExpenseDate, Name, Amount, Remark || null],
+      "INSERT INTO expenses (ExpenseDate, Name, Amount, Remark, CreatedAt, UpdatedAt) VALUES (?, ?, ?, ?, ?, ?)",
+      [ExpenseDate, Name, Amount, Remark || null, createdAt, createdAt],
     );
     res.status(201).json(result.id);
   } catch (err) {
@@ -1284,15 +1394,19 @@ app.post("/api/expenses", async (req, res) => {
 
 app.put("/api/expenses/:id", async (req, res) => {
   const { ExpenseDate, Name, Amount, Remark } = req.body;
-  if (!ExpenseDate) return res.status(400).json({ message: "ExpenseDate is required" });
+  if (!ExpenseDate)
+    return res.status(400).json({ message: "ExpenseDate is required" });
   if (!Name) return res.status(400).json({ message: "Name is required" });
-  if (Amount == null) return res.status(400).json({ message: "Amount is required" });
+  if (Amount == null)
+    return res.status(400).json({ message: "Amount is required" });
   try {
+    const updatedAt = bangkokNowIso();
     const result = await dbRun(
-      "UPDATE expenses SET ExpenseDate = ?, Name = ?, Amount = ?, Remark = ? WHERE ExpenseID = ?",
-      [ExpenseDate, Name, Amount, Remark || null, req.params.id],
+      "UPDATE expenses SET ExpenseDate = ?, Name = ?, Amount = ?, Remark = ?, UpdatedAt = ? WHERE ExpenseID = ?",
+      [ExpenseDate, Name, Amount, Remark || null, updatedAt, req.params.id],
     );
-    if (result.changes === 0) return res.status(404).json({ message: "Expense not found" });
+    if (result.changes === 0)
+      return res.status(404).json({ message: "Expense not found" });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -1301,15 +1415,18 @@ app.put("/api/expenses/:id", async (req, res) => {
 
 app.delete("/api/expenses/:id", async (req, res) => {
   try {
-    const result = await dbRun("DELETE FROM expenses WHERE ExpenseID = ?", [req.params.id]);
-    if (result.changes === 0) return res.status(404).json({ message: "Expense not found" });
+    const result = await dbRun("DELETE FROM expenses WHERE ExpenseID = ?", [
+      req.params.id,
+    ]);
+    if (result.changes === 0)
+      return res.status(404).json({ message: "Expense not found" });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// Backup endpoint – creates a zip with database and images
+// Backup endpoint – creates a zip with database, images, inventory, and expenses
 app.get("/api/backup", async (req, res) => {
   try {
     // Create backup zip file
@@ -1350,13 +1467,13 @@ app.get("/api/backup", async (req, res) => {
     // Pipe archive data to the file
     archive.pipe(output);
 
-    // Add database file
+    // Add the SQLite database. It contains customers, orders, inventory, expenses, and audit log data.
     const dbPath = path.join(DATA_DIR, "beskpoke.db");
     if (fs.existsSync(dbPath)) {
       archive.file(dbPath, { name: "beskpoke.db" });
     }
 
-    // Add all images from uploads directory
+    // Add all uploaded assets, including customer images under uploads/customer-images.
     const uploadsPath = uploadDir;
     if (fs.existsSync(uploadsPath)) {
       archive.directory(uploadsPath, "uploads");
@@ -1431,6 +1548,28 @@ function copyDirectoryContents(srcDir, destDir) {
   }
 }
 
+function restoreImageFoldersFromBackup(extractedDir) {
+  const restoredUploadsDir = path.join(extractedDir, "uploads");
+  const legacyCustomerImagesDir = path.join(extractedDir, "customer-images");
+
+  const hasUploads = fs.existsSync(restoredUploadsDir);
+  const hasLegacyCustomerImages = fs.existsSync(legacyCustomerImagesDir);
+
+  if (!hasUploads && !hasLegacyCustomerImages) {
+    return;
+  }
+
+  clearDirectory(uploadDir);
+
+  if (hasUploads) {
+    copyDirectoryContents(restoredUploadsDir, uploadDir);
+  }
+
+  if (hasLegacyCustomerImages) {
+    copyDirectoryContents(legacyCustomerImagesDir, customerImagesDir);
+  }
+}
+
 app.post(
   "/api/restore",
   restoreUpload.single("backupFile"),
@@ -1459,11 +1598,7 @@ app.post(
 
       await restoreDatabaseFromBackup(restoredDbPath);
 
-      const restoredUploadsDir = path.join(extractedDir, "uploads");
-      if (fs.existsSync(restoredUploadsDir)) {
-        clearDirectory(uploadDir);
-        copyDirectoryContents(restoredUploadsDir, uploadDir);
-      }
+      restoreImageFoldersFromBackup(extractedDir);
 
       res.json({ success: true, message: "Backup restored successfully." });
     } catch (err) {

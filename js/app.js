@@ -184,7 +184,7 @@ const AppShell = (() => {
 
   async function handleBackup() {
     const ok = await Confirm.show(
-      "Create a backup of all database and images?",
+      "Create a backup of the database, inventory, expenses, and customer images?",
       "Backup",
     );
     if (!ok) return;
@@ -259,7 +259,7 @@ const AppShell = (() => {
     if (!selectedFile) return;
 
     const ok = await Confirm.show(
-      "Restore this backup zip? Current database and images will be overwritten.",
+      "Restore this backup zip? Current database, inventory, expenses, and customer images will be overwritten.",
       "Restore Backup",
     );
     if (!ok) return;
