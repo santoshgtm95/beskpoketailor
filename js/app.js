@@ -7,9 +7,9 @@ const AppShell = (() => {
   // ── Navigation ─────────────────────────────────────────────────
   const NAV_ITEMS = [
     { id: "dashboard", icon: "🏠", label: "Dashboard", section: "main" },
+    { id: "order-entry", icon: "✂️", label: "New Order", section: "main" },
     { id: "inventory", icon: "🧶", label: "Inventory", section: "main" },
     { id: "expenses", icon: "💰", label: "Expenses", section: "main" },
-    { id: "order-entry", icon: "✂️", label: "New Order", section: "main" },
     {
       id: "order-history",
       icon: "📋",
