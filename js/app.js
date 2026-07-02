@@ -9,6 +9,8 @@ const AppShell = (() => {
     { id: "dashboard", icon: "🏠", label: "Dashboard", section: "main" },
     { id: "order-entry", icon: "✂️", label: "New Order", section: "main" },
     { id: "inventory", icon: "🧶", label: "Inventory", section: "main" },
+    { id: "sell-fabric", icon: "💲", label: "Sell Fabric", section: "main" },
+    { id: "ready-made", icon: "👔", label: "Ready Made Products", section: "main" },
     { id: "expenses", icon: "💰", label: "Expenses", section: "main" },
     {
       id: "order-history",
@@ -98,6 +100,12 @@ const AppShell = (() => {
     switch (pageId) {
       case "dashboard":
         await DashboardPage.load();
+        break;
+      case "sell-fabric":
+        await SellFabricPage.load();
+        break;
+      case "ready-made":
+        await ReadyMadePage.load();
         break;
       case "order-entry":
         await OrdersPage.populateCategories();
@@ -313,6 +321,8 @@ const AppShell = (() => {
       { id: "page-customers-placeholder", url: "views/customers.html" },
       { id: "page-catalog-placeholder", url: "views/catalog.html" },
       { id: "page-inventory-placeholder", url: "views/inventory.html" },
+      { id: "page-sell-fabric-placeholder", url: "views/sell-fabric.html" },
+      { id: "page-ready-made-placeholder", url: "views/ready-made.html" },
       { id: "page-users-placeholder", url: "views/users.html" },
       { id: "page-auditlog-placeholder", url: "views/auditlog.html" },
       { id: "page-expenses-placeholder", url: "views/expenses.html" },
@@ -398,6 +408,15 @@ const AppShell = (() => {
     document
       .getElementById("btn-save-expense")
       .addEventListener("click", () => ExpensesPage.save());
+    document
+      .getElementById("btn-save-ready-made")
+      .addEventListener("click", () => ReadyMadePage.save());
+    document
+      .getElementById("btn-save-ready-made-sale")
+      .addEventListener("click", () => ReadyMadePage.saveSale());
+    document
+      .getElementById("btn-save-sell-fabric")
+      .addEventListener("click", () => SellFabricPage.save());
 
     // Quick action buttons
     document

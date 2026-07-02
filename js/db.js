@@ -162,4 +162,25 @@ const DB = {
     put:    (r)        => apiRequest(`/expenses/${r.ExpenseID}`, { method: 'PUT', body: r }),
     delete: (id)       => apiRequest(`/expenses/${id}`, { method: 'DELETE' }),
   },
+
+  // Fabric Sales
+  fabricSales: {
+    getAll: ()         => apiRequest('/fabric-sales'),
+    add:    (r)        => apiRequest('/fabric-sales', { method: 'POST', body: r }),
+  },
+
+  // Ready Made Products
+  readyMadeProducts: {
+    getAll: ()         => apiRequest('/ready-made-products'),
+    get:    (id)       => apiRequest(`/ready-made-products/${id}`),
+    add:    (r)        => apiRequest('/ready-made-products', { method: 'POST', body: r }),
+    put:    (r)        => apiRequest(`/ready-made-products/${r.ProductID}`, { method: 'PUT', body: r }),
+    delete: (id)       => apiRequest(`/ready-made-products/${id}`, { method: 'DELETE' }),
+  },
+
+  // Ready Made Sales
+  readyMadeSales: {
+    getAll: ()         => apiRequest('/ready-made-sales'),
+    add:    (r)        => apiRequest('/ready-made-sales', { method: 'POST', body: r }),
+  },
 };

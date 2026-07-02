@@ -479,6 +479,53 @@ async function initDb() {
     )
   `);
 
+  await dbRun(`
+    CREATE TABLE IF NOT EXISTS fabric_sales (
+      SaleID INTEGER PRIMARY KEY AUTOINCREMENT,
+      SaleDate TEXT NOT NULL,
+      FabricID INTEGER NOT NULL,
+      Quantity REAL NOT NULL,
+      UnitPrice REAL NOT NULL,
+      SellingPrice REAL NOT NULL,
+      TotalAmount REAL NOT NULL,
+      CreatedAt TEXT,
+      FOREIGN KEY (FabricID) REFERENCES fabric_inventory(FabricID) ON DELETE RESTRICT
+    )
+  `);
+
+  await dbRun(`
+    CREATE TABLE IF NOT EXISTS ready_made_products (
+      ProductID INTEGER PRIMARY KEY AUTOINCREMENT,
+      Name TEXT NOT NULL,
+      Category TEXT NOT NULL,
+      Type TEXT,
+      Size TEXT NOT NULL,
+      Cost REAL NOT NULL,
+      FabricID INTEGER,
+      FabricQtyUsed REAL DEFAULT 0,
+      Color TEXT,
+      Count INTEGER NOT NULL,
+      SellingPrice REAL NOT NULL,
+      TailorFees REAL DEFAULT 0,
+      CreatedAt TEXT,
+      UpdatedAt TEXT,
+      FOREIGN KEY (FabricID) REFERENCES fabric_inventory(FabricID) ON DELETE SET NULL
+    )
+  `);
+
+  await dbRun(`
+    CREATE TABLE IF NOT EXISTS ready_made_sales (
+      SaleID INTEGER PRIMARY KEY AUTOINCREMENT,
+      ProductID INTEGER NOT NULL,
+      SaleDate TEXT NOT NULL,
+      Quantity INTEGER NOT NULL,
+      SellingPrice REAL NOT NULL,
+      TotalAmount REAL NOT NULL,
+      CreatedAt TEXT,
+      FOREIGN KEY (ProductID) REFERENCES ready_made_products(ProductID) ON DELETE RESTRICT
+    )
+  `);
+
   const inventoryMigrations = [
     "ALTER TABLE fabric_inventory ADD COLUMN CreatedAt TEXT",
     "ALTER TABLE fabric_inventory ADD COLUMN UpdatedAt TEXT",
@@ -1444,6 +1491,196 @@ app.delete("/api/expenses/:id", async (req, res) => {
     if (result.changes === 0)
       return res.status(404).json({ message: "Expense not found" });
     res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── Fabric Sales Endpoints ────────────────────────────────────────
+app.get("/api/fabric-sales", async (req, res) => {
+  try {
+    const list = await dbAll(`
+      SELECT fs.*, fi.Name AS FabricName, fi.Code AS FabricCode, fi.Color AS FabricColor, fi.Unit AS FabricUnit 
+      FROM fabric_sales fs 
+      JOIN fabric_inventory fi ON fs.FabricID = fi.FabricID 
+      ORDER BY fs.SaleID DESC
+    `);
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.post("/api/fabric-sales", async (req, res) => {
+  const { SaleDate, FabricID, Quantity, UnitPrice, SellingPrice, TotalAmount } = req.body;
+  if (!SaleDate) return res.status(400).json({ message: "SaleDate is required" });
+  if (!FabricID) return res.status(400).json({ message: "FabricID is required" });
+  if (Quantity == null || Quantity <= 0) return res.status(400).json({ message: "Valid Quantity is required" });
+  if (SellingPrice == null) return res.status(400).json({ message: "SellingPrice is required" });
+
+  try {
+    const fabric = await dbGet("SELECT Count, Name FROM fabric_inventory WHERE FabricID = ?", [FabricID]);
+    if (!fabric) return res.status(404).json({ message: "Fabric not found in inventory" });
+    if (fabric.Count < Quantity) {
+      return res.status(400).json({ message: `Insufficient inventory for ${fabric.Name}. Available: ${fabric.Count}` });
+    }
+
+    const now = bangkokNowIso();
+    // Decrement fabric count
+    await dbRun("UPDATE fabric_inventory SET Count = Count - ?, UpdatedAt = ? WHERE FabricID = ?", [Quantity, now, FabricID]);
+    
+    // Log the sale
+    const result = await dbRun(`
+      INSERT INTO fabric_sales (SaleDate, FabricID, Quantity, UnitPrice, SellingPrice, TotalAmount, CreatedAt) 
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `, [SaleDate, FabricID, Quantity, UnitPrice || 0, SellingPrice, TotalAmount, now]);
+
+    res.status(201).json(result.id);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── Ready Made Products Endpoints ──────────────────────────────────
+app.get("/api/ready-made-products", async (req, res) => {
+  try {
+    const list = await dbAll(`
+      SELECT rmp.*, fi.Name AS FabricName, fi.Code AS FabricCode, fi.Unit AS FabricUnit
+      FROM ready_made_products rmp
+      LEFT JOIN fabric_inventory fi ON rmp.FabricID = fi.FabricID
+      ORDER BY rmp.ProductID DESC
+    `);
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.get("/api/ready-made-products/:id", async (req, res) => {
+  try {
+    const row = await dbGet(`
+      SELECT rmp.*, fi.Name AS FabricName, fi.Code AS FabricCode, fi.Unit AS FabricUnit
+      FROM ready_made_products rmp
+      LEFT JOIN fabric_inventory fi ON rmp.FabricID = fi.FabricID
+      WHERE rmp.ProductID = ?
+    `, [req.params.id]);
+    if (!row) return res.status(404).json({ message: "Product not found" });
+    res.json(row);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.post("/api/ready-made-products", async (req, res) => {
+  const { Name, Category, Type, Size, Cost, FabricID, FabricQtyUsed, Color, Count, SellingPrice, TailorFees } = req.body;
+  if (!Name) return res.status(400).json({ message: "Name is required" });
+  if (!Category) return res.status(400).json({ message: "Category is required" });
+  if (!Size) return res.status(400).json({ message: "Size is required" });
+  if (Cost == null) return res.status(400).json({ message: "Cost is required" });
+  if (Count == null || Count < 0) return res.status(400).json({ message: "Count is required" });
+  if (SellingPrice == null) return res.status(400).json({ message: "Selling Price is required" });
+
+  try {
+    const now = bangkokNowIso();
+    
+    // If fabric is chosen, check and subtract from inventory
+    if (FabricID && FabricQtyUsed > 0 && Count > 0) {
+      const fabric = await dbGet("SELECT Count, Name FROM fabric_inventory WHERE FabricID = ?", [FabricID]);
+      if (!fabric) return res.status(404).json({ message: "Selected Fabric not found in inventory" });
+      const totalFabricNeeded = FabricQtyUsed * Count;
+      if (fabric.Count < totalFabricNeeded) {
+        return res.status(400).json({ message: `Insufficient inventory for ${fabric.Name}. Needed: ${totalFabricNeeded}, Available: ${fabric.Count}` });
+      }
+      await dbRun("UPDATE fabric_inventory SET Count = Count - ?, UpdatedAt = ? WHERE FabricID = ?", [totalFabricNeeded, now, FabricID]);
+    }
+
+    const result = await dbRun(`
+      INSERT INTO ready_made_products (Name, Category, Type, Size, Cost, FabricID, FabricQtyUsed, Color, Count, SellingPrice, TailorFees, CreatedAt, UpdatedAt) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [Name, Category, Type || null, Size, Cost, FabricID || null, FabricQtyUsed || 0, Color || null, Count, SellingPrice, TailorFees || 0, now, now]);
+
+    res.status(201).json(result.id);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.put("/api/ready-made-products/:id", async (req, res) => {
+  const { Name, Category, Type, Size, Cost, FabricID, FabricQtyUsed, Color, Count, SellingPrice, TailorFees } = req.body;
+  if (!Name) return res.status(400).json({ message: "Name is required" });
+  if (!Category) return res.status(400).json({ message: "Category is required" });
+  if (!Size) return res.status(400).json({ message: "Size is required" });
+  if (Cost == null) return res.status(400).json({ message: "Cost is required" });
+  if (Count == null || Count < 0) return res.status(400).json({ message: "Count is required" });
+  if (SellingPrice == null) return res.status(400).json({ message: "Selling Price is required" });
+
+  try {
+    const now = bangkokNowIso();
+    // Standard metadata update. We don't perform retroactive fabric corrections to avoid data loops,
+    // but we update the product state.
+    const result = await dbRun(`
+      UPDATE ready_made_products 
+      SET Name = ?, Category = ?, Type = ?, Size = ?, Cost = ?, FabricID = ?, FabricQtyUsed = ?, Color = ?, Count = ?, SellingPrice = ?, TailorFees = ?, UpdatedAt = ?
+      WHERE ProductID = ?
+    `, [Name, Category, Type || null, Size, Cost, FabricID || null, FabricQtyUsed || 0, Color || null, Count, SellingPrice, TailorFees || 0, now, req.params.id]);
+
+    if (result.changes === 0) return res.status(404).json({ message: "Product not found" });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.delete("/api/ready-made-products/:id", async (req, res) => {
+  try {
+    const result = await dbRun("DELETE FROM ready_made_products WHERE ProductID = ?", [req.params.id]);
+    if (result.changes === 0) return res.status(404).json({ message: "Product not found" });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── Ready Made Sales Endpoints ─────────────────────────────────────
+app.get("/api/ready-made-sales", async (req, res) => {
+  try {
+    const list = await dbAll(`
+      SELECT rms.*, rmp.Name AS ProductName, rmp.Category AS ProductCategory, rmp.Size AS ProductSize
+      FROM ready_made_sales rms
+      JOIN ready_made_products rmp ON rms.ProductID = rmp.ProductID
+      ORDER BY rms.SaleID DESC
+    `);
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.post("/api/ready-made-sales", async (req, res) => {
+  const { ProductID, SaleDate, Quantity, SellingPrice, TotalAmount } = req.body;
+  if (!ProductID) return res.status(400).json({ message: "ProductID is required" });
+  if (!SaleDate) return res.status(400).json({ message: "SaleDate is required" });
+  if (Quantity == null || Quantity <= 0) return res.status(400).json({ message: "Valid Quantity is required" });
+  if (SellingPrice == null) return res.status(400).json({ message: "Selling Price is required" });
+
+  try {
+    const product = await dbGet("SELECT Count, Name FROM ready_made_products WHERE ProductID = ?", [ProductID]);
+    if (!product) return res.status(404).json({ message: "Product not found" });
+    if (product.Count < Quantity) {
+      return res.status(400).json({ message: `Insufficient stock for ${product.Name}. Available: ${product.Count}` });
+    }
+
+    const now = bangkokNowIso();
+    // Decrement product count
+    await dbRun("UPDATE ready_made_products SET Count = Count - ?, UpdatedAt = ? WHERE ProductID = ?", [Quantity, now, ProductID]);
+    
+    // Log the sale
+    const result = await dbRun(`
+      INSERT INTO ready_made_sales (ProductID, SaleDate, Quantity, SellingPrice, TotalAmount, CreatedAt)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `, [ProductID, SaleDate, Quantity, SellingPrice, TotalAmount, now]);
+
+    res.status(201).json(result.id);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

@@ -13,6 +13,7 @@ const InventoryPage = (() => {
   async function load() {
     allFabrics = await DB.inventory.getAll();
     const orderLines = await DB.orderlines.getAll().catch(() => []);
+    const fabricSales = await DB.fabricSales.getAll().catch(() => []);
     usedCountByFabricId = new Map();
 
     for (const line of orderLines) {
@@ -24,6 +25,18 @@ const InventoryPage = (() => {
       usedCountByFabricId.set(
         line.FabricID,
         currentUsed + Number(line.UseCount),
+      );
+    }
+
+    // Also count fabric sold directly via Sell Fabric page
+    for (const sale of fabricSales) {
+      if (!sale.FabricID || sale.Quantity == null || sale.Quantity <= 0) {
+        continue;
+      }
+      const currentUsed = usedCountByFabricId.get(sale.FabricID) || 0;
+      usedCountByFabricId.set(
+        sale.FabricID,
+        currentUsed + Number(sale.Quantity),
       );
     }
 

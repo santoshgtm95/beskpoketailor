@@ -460,6 +460,7 @@ const OrdersPage = (() => {
       document.getElementById("meas-shirt-chk-wide-square").checked = false;
       document.getElementById("meas-shirt-chk-collar-roll").checked = false;
       document.getElementById("meas-shirt-chk-lapel-gorge").checked = false;
+      document.getElementById("meas-shirt-chk-back-pleat").checked = false;
       document.getElementById("meas-shirt-chk-plain-back").checked = false;
       document.getElementById("meas-shirt-chk-center-pleat").checked = false;
       document.getElementById("meas-shirt-chk-side-pleats").checked = false;
@@ -570,8 +571,8 @@ const OrdersPage = (() => {
     if (getChk("meas-pant-chk-flat-seat")) chks.push("Flat Seat");
     if (getChk("meas-pant-chk-prominent-seat")) chks.push("Prominent Seat");
     if (getChk("meas-pant-chk-front-low")) chks.push("Front Low");
-    if (getChk("meas-pant-chk-male")) chks.push("Male");
-    if (getChk("meas-pant-chk-female")) chks.push("Female");
+    if (getChk("meas-pant-chk-male")) chks.push("Gents");
+    if (getChk("meas-pant-chk-female")) chks.push("Ladies");
     if (getChk("meas-pant-chk-front-thigh")) chks.push("Prominent Front Thigh");
 
     const color = getVal("meas-pant-color");
@@ -675,26 +676,29 @@ const OrdersPage = (() => {
 
     const chks = [];
     if (getChk("meas-shirt-chk-sloping-shoulder"))
-      chks.push("Sloping Shoulder (ไหล่เทา)");
-    if (getChk("meas-shirt-chk-belly")) chks.push("Belly (มีพุง)");
+      chks.push("ไหล่เท (Sloping Shoulders)");
+    if (getChk("meas-shirt-chk-belly"))
+      chks.push("มีพุง (Protruding Belly / Stomach)");
     if (getChk("meas-shirt-chk-hunched-back"))
-      chks.push("Hunched Back (หลังค่อม)");
-    if (getChk("meas-shirt-chk-male")) chks.push("Male (ผู้ชาย)");
-    if (getChk("meas-shirt-chk-female")) chks.push("Female (ผู้หญิง)");
-    if (getChk("meas-shirt-chk-pointed")) chks.push("Pointed (แหลม (F))");
-    if (getChk("meas-shirt-chk-square")) chks.push("Square (ป้าน (I))");
+      chks.push("หลังค่อม (Hunched Back)");
+    if (getChk("meas-shirt-chk-male")) chks.push("Gents (ผู้ชาย)");
+    if (getChk("meas-shirt-chk-female")) chks.push("Ladies (ผู้หญิง)");
+    if (getChk("meas-shirt-chk-pointed")) chks.push("แหลม (F) (Point Collar)");
+    if (getChk("meas-shirt-chk-square"))
+      chks.push("ป้าน (I) (Semi-Spread Collar)");
     if (getChk("meas-shirt-chk-wide-square"))
-      chks.push("Wide Square (ป้าน (180))");
+      chks.push("ป้าน (180) (Wide Spread Collar (180°))");
     if (getChk("meas-shirt-chk-collar-roll"))
-      chks.push("Collar Roll (คุมใบปก)");
+      chks.push("คุมบนปก (Top Collar Stitching)");
     if (getChk("meas-shirt-chk-lapel-gorge"))
-      chks.push("Lapel Gorge (จุมไตปก)");
+      chks.push("คุมใต้ปก (Under Collar Stitching)");
+    if (getChk("meas-shirt-chk-back-pleat")) chks.push("คาร์ท (Back Pleat)");
     if (getChk("meas-shirt-chk-plain-back"))
-      chks.push("Plain Back (หลังเรียบ (X))");
+      chks.push("หลังเรียบ (X) (Plain Back / No Pleat)");
     if (getChk("meas-shirt-chk-center-pleat"))
-      chks.push("Center Pleat (จีบกลาง (TT))");
+      chks.push("จีบกลาง (TT) (Center Pleat)");
     if (getChk("meas-shirt-chk-side-pleats"))
-      chks.push("Side Pleats (จีบข้าง (TT))");
+      chks.push("จีบข้าง (TT) (Side Pleats)");
 
     const color = getVal("meas-shirt-color");
     const desc = getVal("meas-shirt-description");
@@ -786,8 +790,8 @@ const OrdersPage = (() => {
     if (getChk("meas-chk-hunched-back")) chks.push("Hunched Back");
     if (getChk("meas-chk-belly")) chks.push("Belly");
     if (getChk("meas-chk-sway-back")) chks.push("Sway Back");
-    if (getChk("meas-chk-male")) chks.push("Male");
-    if (getChk("meas-chk-female")) chks.push("Female");
+    if (getChk("meas-chk-male")) chks.push("Gents");
+    if (getChk("meas-chk-female")) chks.push("Ladies");
     if (getChk("meas-chk-low-leg")) chks.push("Low Leg");
     if (getChk("meas-chk-left-lower")) chks.push("Left Side Lower");
 

@@ -1,0 +1,397 @@
+<div class="page" id="page-ready-made">
+  <!-- Tabs Header -->
+  <div class="card" style="margin-bottom: 16px; padding: 12px 16px">
+    <div class="flex justify-between items-center gap-3 flex-wrap">
+      <div class="flex gap-2">
+        <button
+          class="tab-btn active"
+          data-tab="ready-products"
+          data-group="ready-made-page"
+        >
+          👔 Registered Products
+        </button>
+        <button
+          class="tab-btn"
+          data-tab="ready-sales"
+          data-group="ready-made-page"
+          onclick="ReadyMadePage.loadSalesHistory()"
+        >
+          📜 Sales History
+        </button>
+      </div>
+      <div class="flex gap-2 items-center">
+        <button class="btn btn-gold btn-sm" onclick="ReadyMadePage.openAdd()">
+          ➕ Register Product
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab 1: Registered Products -->
+  <div
+    class="tab-panel active"
+    id="tab-ready-products"
+    data-group="ready-made-page"
+  >
+    <div class="card" style="margin-bottom: 16px">
+      <div class="flex justify-between items-center gap-3">
+        <div class="search-input-wrap" style="max-width: 320px; flex: 1">
+          <span class="search-icon">🔍</span>
+          <input
+            type="text"
+            id="ready-products-search"
+            placeholder="Search ready made products…"
+          />
+        </div>
+        <span class="text-muted" style="font-size: 13px">
+          <strong id="ready-products-count">0</strong> products
+        </span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="order-table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Product Name</th>
+              <th>Category</th>
+              <th>Type</th>
+              <th>Size</th>
+              <th>Color</th>
+              <th class="text-right">Stock Count</th>
+              <th class="text-right">Cost</th>
+              <th class="text-right">Sell Price</th>
+              <th class="text-right">Tailor Fee</th>
+              <th>Fabric Used</th>
+              <th class="text-right" style="width: 140px">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="ready-products-tbody">
+            <tr>
+              <td colspan="12" class="table-empty">Loading products…</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination" id="ready-products-pagination"></div>
+    </div>
+  </div>
+
+  <!-- Tab 2: Sales History -->
+  <div class="tab-panel" id="tab-ready-sales" data-group="ready-made-page">
+    <div class="card" style="margin-bottom: 16px">
+      <div class="flex justify-between items-center gap-3">
+        <div class="search-input-wrap" style="max-width: 320px; flex: 1">
+          <span class="search-icon">🔍</span>
+          <input
+            type="text"
+            id="ready-sales-search"
+            placeholder="Search sales history…"
+          />
+        </div>
+        <div style="text-align: right">
+          <span class="text-muted" style="font-size: 13px; margin-right: 12px">
+            <strong id="ready-sales-count">0</strong> sales
+          </span>
+          <span
+            style="font-size: 14px; font-weight: bold; color: var(--gold-light)"
+          >
+            Total: <span id="ready-sales-sum">THB 0.00</span>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="order-table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Sale ID</th>
+              <th>Date</th>
+              <th>Product Name</th>
+              <th>Category</th>
+              <th>Size</th>
+              <th class="text-right">Qty Sold</th>
+              <th class="text-right">Selling Price</th>
+              <th class="text-right">Total Amount</th>
+            </tr>
+          </thead>
+          <tbody id="ready-sales-tbody">
+            <tr>
+              <td colspan="8" class="table-empty">No sales recorded yet.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination" id="ready-sales-pagination"></div>
+    </div>
+  </div>
+
+  <!-- ── MODALS ── -->
+
+  <!-- Modal: Register / Edit Ready Made Product -->
+  <div class="modal-overlay" id="modal-ready-made">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="rm-modal-title">👔 Register Ready Made Product</h3>
+        <button
+          class="btn-close-modal"
+          onclick="Modal.close('modal-ready-made')"
+        >
+          ✕
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="ready-made-form" novalidate>
+          <input type="hidden" id="rm-id-hidden" />
+
+          <div class="grid-2" style="gap: 12px">
+            <div class="form-group">
+              <label>Product Name <span class="required">*</span></label>
+              <input
+                type="text"
+                id="rm-name"
+                placeholder="e.g. Classic White Dress Shirt"
+              />
+              <div class="field-error" style="display: none"></div>
+            </div>
+            <div class="form-group">
+              <label>Category <span class="required">*</span></label>
+              <select id="rm-category">
+                <option value="">-- Select Category --</option>
+                <option value="Jacket">Jacket</option>
+                <option value="Vest">Vest</option>
+                <option value="Trousers">Trousers</option>
+                <option value="Skirt">Skirt</option>
+                <option value="Shirt">Shirt</option>
+                <option value="Suit">Suit</option>
+                <option value="Tie">Tie</option>
+              </select>
+              <div class="field-error" style="display: none"></div>
+            </div>
+          </div>
+
+          <div class="grid-3" style="gap: 12px">
+            <div class="form-group">
+              <label>Type</label>
+              <input
+                type="text"
+                id="rm-type"
+                placeholder="e.g. Slim Fit, Regular"
+              />
+            </div>
+            <div class="form-group">
+              <label>Size <span class="required">*</span></label>
+              <input
+                type="text"
+                id="rm-size"
+                placeholder="e.g. M, L, 42, 34W/32L"
+              />
+              <div class="field-error" style="display: none"></div>
+            </div>
+            <div class="form-group">
+              <label>Color</label>
+              <input type="text" id="rm-color" placeholder="e.g. Navy Blue" />
+            </div>
+          </div>
+
+          <div class="grid-3" style="gap: 12px; margin-top: 6px">
+            <div class="form-group">
+              <label
+                >Cost / Production Price (THB)
+                <span class="required">*</span></label
+              >
+              <input
+                type="number"
+                id="rm-cost"
+                step="0.01"
+                placeholder="e.g. 500"
+              />
+              <div class="field-error" style="display: none"></div>
+            </div>
+            <div class="form-group">
+              <label>Selling Price (THB) <span class="required">*</span></label>
+              <input
+                type="number"
+                id="rm-selling-price"
+                step="0.01"
+                placeholder="e.g. 1200"
+              />
+              <div class="field-error" style="display: none"></div>
+            </div>
+            <div class="form-group">
+              <label>Tailor Fees (THB)</label>
+              <input
+                type="number"
+                id="rm-tailor-fees"
+                step="0.01"
+                placeholder="e.g. 200"
+              />
+            </div>
+          </div>
+
+          <div
+            class="card-divider"
+            style="margin: 16px 0; border-top: 1px solid var(--border)"
+          ></div>
+
+          <div style="margin-bottom: 8px">
+            <strong style="font-size: 14px; color: var(--gold-light)"
+              >🧶 Fabric Usage (Optional)</strong
+            >
+          </div>
+
+          <div class="grid-3" style="gap: 12px">
+            <div class="form-group" style="grid-column: span 2">
+              <label>Use Fabric from Inventory</label>
+              <select
+                id="rm-fabric-id"
+                onchange="ReadyMadePage.onFabricSelectChange()"
+              >
+                <option value="">-- No Fabric (No Deduction) --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Fabric Qty Used (Per Item)</label>
+              <input
+                type="number"
+                id="rm-fabric-qty"
+                step="0.01"
+                placeholder="yards used per item"
+              />
+            </div>
+          </div>
+
+          <p
+            class="text-muted"
+            style="font-size: 11px; margin-top: 4px; line-height: 1.4"
+          >
+            * If fabric is selected, registering this product will automatically
+            deduct <strong>(Fabric Qty Used × Count)</strong> from the fabric's
+            inventory count.
+          </p>
+
+          <div class="form-group" style="margin-top: 10px">
+            <label
+              >Stock Count / Quantity <span class="required">*</span></label
+            >
+            <input type="number" id="rm-count" placeholder="e.g. 10" />
+            <div class="field-error" style="display: none"></div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="Modal.close('modal-ready-made')">
+          Cancel
+        </button>
+        <button class="btn btn-primary" id="btn-save-ready-made">
+          Save Product
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Sell Ready Made Product -->
+  <div class="modal-overlay" id="modal-sell-ready-made">
+    <div class="modal modal-sm-h">
+      <div class="modal-header">
+        <h3>💸 Sell Ready Made Product</h3>
+        <button
+          class="btn-close-modal"
+          onclick="Modal.close('modal-sell-ready-made')"
+        >
+          ✕
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="ready-made-sale-form" novalidate>
+          <input type="hidden" id="sale-product-id" />
+
+          <div class="form-group">
+            <label>Product Name</label>
+            <input
+              type="text"
+              id="sale-product-name"
+              readonly
+              style="
+                background-color: var(--bg-input);
+                color: var(--text-muted);
+              "
+            />
+          </div>
+
+          <div class="form-group">
+            <label>Date <span class="required">*</span></label>
+            <input type="date" id="sale-date" />
+            <div class="field-error" style="display: none"></div>
+          </div>
+
+          <div class="grid-2" style="gap: 12px">
+            <div class="form-group">
+              <label>Selling Price (THB) <span class="required">*</span></label>
+              <input
+                type="number"
+                id="sale-price"
+                step="0.01"
+                oninput="ReadyMadePage.calcSaleTotal()"
+              />
+              <div class="field-error" style="display: none"></div>
+            </div>
+            <div class="form-group">
+              <label>Available Stock</label>
+              <input
+                type="number"
+                id="sale-avail-qty"
+                readonly
+                style="
+                  background-color: var(--bg-input);
+                  color: var(--text-muted);
+                "
+              />
+            </div>
+          </div>
+
+          <div class="grid-2" style="gap: 12px">
+            <div class="form-group">
+              <label>Qty to Sell <span class="required">*</span></label>
+              <input
+                type="number"
+                id="sale-qty"
+                oninput="ReadyMadePage.calcSaleTotal()"
+                placeholder="e.g. 1"
+              />
+              <div class="field-error" style="display: none"></div>
+            </div>
+            <div class="form-group">
+              <label>Total Amount (THB)</label>
+              <input
+                type="number"
+                id="sale-total"
+                readonly
+                style="
+                  background-color: var(--bg-input);
+                  font-weight: bold;
+                  color: var(--text-gold);
+                "
+              />
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button
+          class="btn btn-ghost"
+          onclick="Modal.close('modal-sell-ready-made')"
+        >
+          Cancel
+        </button>
+        <button class="btn btn-gold" id="btn-save-ready-made-sale">
+          Confirm Sale
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
