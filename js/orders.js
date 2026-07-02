@@ -343,7 +343,7 @@ const OrdersPage = (() => {
     document.getElementById("item-qty").value = "1";
     document.getElementById("item-unit-price").value = "";
 
-    if (selectedCat.Name === "Jacket") {
+    if (selectedCat.Name === "Jacket & Vest") {
       // Measurements Modal explicitly for Jacket
       populateFabricDropdown("meas");
       document.getElementById("meas-cat-sub-name").textContent =
@@ -378,9 +378,10 @@ const OrdersPage = (() => {
       document.getElementById("meas-qty").value = "1";
       document.getElementById("meas-color").value = "";
       document.getElementById("meas-unit-price").value = "";
+      document.getElementById("meas-tailor-fees").value = "";
 
       Modal.open("modal-measurements");
-    } else if (selectedCat.Name === "Pant") {
+    } else if (selectedCat.Name === "Trousers & Skirt") {
       // Measurements Modal explicitly for Pant
       populateFabricDropdown("meas-pant");
       document.getElementById("meas-pant-cat-sub-name").textContent =
@@ -414,9 +415,10 @@ const OrdersPage = (() => {
       document.getElementById("meas-pant-qty").value = "1";
       document.getElementById("meas-pant-color").value = "";
       document.getElementById("meas-pant-unit-price").value = "";
+      document.getElementById("meas-pant-tailor-fees").value = "";
 
       Modal.open("modal-meas-pant");
-    } else if (selectedCat.Name === "Shirt") {
+    } else if (selectedCat.Name === "Shirt & Dress") {
       // Measurements Modal explicitly for Shirt
       populateFabricDropdown("meas-shirt");
       document.getElementById("meas-shirt-cat-sub-name").textContent =
@@ -464,6 +466,7 @@ const OrdersPage = (() => {
       document.getElementById("meas-shirt-qty").value = "1";
       document.getElementById("meas-shirt-color").value = "";
       document.getElementById("meas-shirt-unit-price").value = "";
+      document.getElementById("meas-shirt-tailor-fees").value = "";
 
       Modal.open("modal-meas-shirt");
     } else {
@@ -587,6 +590,9 @@ const OrdersPage = (() => {
         customDesc += ` | Fabric Used: ${fabricSel.UseCount} ${fabricSel.FabricUnit}`;
     }
 
+    const tailorFees =
+      parseFloat(document.getElementById("meas-pant-tailor-fees").value) || 0;
+
     const line = {
       tempId: Date.now(),
       CategoryID: selectedCat.CategoryID,
@@ -601,6 +607,7 @@ const OrdersPage = (() => {
       FabricID: fabricSel ? fabricSel.FabricID : null,
       UseCount: fabricSel ? fabricSel.UseCount : null,
       FabricUnit: fabricSel ? fabricSel.FabricUnit : null,
+      TailorFees: tailorFees,
     };
 
     orderLines.push(line);
@@ -705,6 +712,9 @@ const OrdersPage = (() => {
         customDesc += ` | Fabric Used: ${fabricSel.UseCount} ${fabricSel.FabricUnit}`;
     }
 
+    const tailorFees =
+      parseFloat(document.getElementById("meas-shirt-tailor-fees").value) || 0;
+
     const line = {
       tempId: Date.now(),
       CategoryID: selectedCat.CategoryID,
@@ -719,6 +729,7 @@ const OrdersPage = (() => {
       FabricID: fabricSel ? fabricSel.FabricID : null,
       UseCount: fabricSel ? fabricSel.UseCount : null,
       FabricUnit: fabricSel ? fabricSel.FabricUnit : null,
+      TailorFees: tailorFees,
     };
 
     orderLines.push(line);
@@ -796,6 +807,9 @@ const OrdersPage = (() => {
         customDesc += ` | Fabric Used: ${fabricSel.UseCount} ${fabricSel.FabricUnit}`;
     }
 
+    const tailorFees =
+      parseFloat(document.getElementById("meas-tailor-fees").value) || 0;
+
     const line = {
       tempId: Date.now(),
       CategoryID: selectedCat.CategoryID,
@@ -810,6 +824,7 @@ const OrdersPage = (() => {
       FabricID: fabricSel ? fabricSel.FabricID : null,
       UseCount: fabricSel ? fabricSel.UseCount : null,
       FabricUnit: fabricSel ? fabricSel.FabricUnit : null,
+      TailorFees: tailorFees,
     };
 
     orderLines.push(line);
@@ -978,6 +993,7 @@ const OrdersPage = (() => {
           FabricID: l.FabricID || null,
           UseCount: l.UseCount == null ? null : l.UseCount,
           FabricUnit: l.FabricUnit || null,
+          TailorFees: l.TailorFees || 0,
         });
       }
 
@@ -1094,6 +1110,7 @@ const OrdersPage = (() => {
         FabricID: l.FabricID || null,
         UseCount: l.UseCount || null,
         FabricUnit: l.FabricUnit || null,
+        TailorFees: l.TailorFees || 0,
       });
     }
 
@@ -1356,13 +1373,19 @@ const OrdersPage = (() => {
 
     let filtered = allOrders.filter((o) => {
       const cust = custMap[o.CustomerID];
-      const custMatch =
+      const [yy, mm, dd] = (o.OrderDate || "").split("-");
+      const dmy = dd && mm && yy ? `${dd}/${mm}/${yy}` : "";
+      const searchMatch =
         !q ||
         (cust?.Name || "").toLowerCase().includes(q) ||
+        (cust?.Phone || "").toLowerCase().includes(q) ||
+        (cust?.Address || "").toLowerCase().includes(q) ||
         String(o.OrderID).includes(q) ||
-        fmtOrderId(o.OrderID).includes(q);
+        fmtOrderId(o.OrderID).toLowerCase().includes(q) ||
+        (o.OrderDate || "").toLowerCase().includes(q) ||
+        dmy.includes(q);
       const dateMatch = !date || o.OrderDate === date;
-      return custMatch && dateMatch;
+      return searchMatch && dateMatch;
     });
 
     const total = filtered.length;
@@ -1371,7 +1394,7 @@ const OrdersPage = (() => {
 
     const tbody = document.getElementById("history-tbody");
     if (paged.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" class="table-empty">
+      tbody.innerHTML = `<tr><td colspan="6" class="table-empty">
         <div class="empty-icon">📋</div>No orders found.</td></tr>`;
     } else {
       tbody.innerHTML = paged
@@ -1397,12 +1420,27 @@ const OrdersPage = (() => {
             if (lines.length > 2) itemsLabel += `, +${lines.length - 2} more`;
           }
 
+          const stamp = o.CreatedAt || `${o.OrderDate}T00:00:00+07:00`;
+          const dt = new Date(stamp);
+          const bkkParts = new Intl.DateTimeFormat("en-GB", {
+            timeZone: "Asia/Bangkok",
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          })
+            .formatToParts(dt)
+            .reduce((acc, p) => ((acc[p.type] = p.value), acc), {});
+          const dateTimeStr = `${bkkParts.day}/${bkkParts.month}/${bkkParts.year} ${bkkParts.hour}:${bkkParts.minute}`;
+
           return `<tr>
           <td class="font-mono" style="color: var(--text-primary)">${fmtOrderId(o.OrderID)}</td>
-          <td>${fmtDate(o.OrderDate)}</td>
-            <td>${fmtDateTime(o.CreatedAt || `${o.OrderDate}T00:00:00+07:00`)}</td>
+          <td>${dateTimeStr}</td>
           <td><strong>${sanitize(cust?.Name || "Unknown")}</strong><br>
-              <small class="text-muted">${sanitize(cust?.Phone || "")}</small></td>
+              <small class="text-muted">${sanitize(cust?.Phone || "No phone")}</small><br>
+              <small class="text-muted">${sanitize(cust?.Address || "No address")}</small></td>
           <td class="text-muted"><strong>${itemsCount} item${itemsCount !== 1 ? "s" : ""}</strong><br>
               <small class="text-muted">${itemsLabel}</small></td>
           <td class="text-right font-mono font-bold" style="color: var(--text-primary)">${fmtCurrency(o.TotalAmount)}</td>
@@ -1436,6 +1474,7 @@ const OrdersPage = (() => {
 
     let linesHtml = "";
     let total = 0;
+    let totalTailorFees = 0;
     for (const l of lines) {
       let desc = l.Description;
       if (!desc) {
@@ -1460,6 +1499,10 @@ const OrdersPage = (() => {
         fabricHtml += `</div>`;
       }
 
+      const lineTailorFees = Number(l.TailorFees) || 0;
+      const tailorFeesHtml = `<div style="margin-top:6px;padding:4px 8px;background:var(--bg-input,#2a2a2a);border-radius:4px;font-size:12px;color:var(--text-secondary);">✂️ Tailor Fees: <strong style="color:var(--gold-light)">${fmtCurrency(lineTailorFees)}</strong></div>`;
+      totalTailorFees += lineTailorFees;
+
       let parts = (desc || "").split(" | ");
       let formattedDesc = `<strong>${sanitize(parts[0])}</strong>`;
       if (parts.length > 1) {
@@ -1474,6 +1517,7 @@ const OrdersPage = (() => {
         formattedDesc += `</ul>`;
       }
       formattedDesc += fabricHtml;
+      formattedDesc += tailorFeesHtml;
 
       linesHtml += `<tr>
         <td style="vertical-align: top; padding-top: 14px;">${formattedDesc}</td>
@@ -1532,6 +1576,10 @@ const OrdersPage = (() => {
         </div>`
             : ""
         }
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);">
+          <div style="font-size:13px;color:var(--text-secondary);">Total Tailor Fees</div>
+          <div style="font-size:13px;font-weight:600;">${fmtCurrency(totalTailorFees)}</div>
+        </div>
         <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);">
           <div style="font-size:13px;color:var(--text-secondary);">Paid Amount</div>
           <div style="font-size:13px;font-weight:600;">${fmtCurrency(deposit)}</div>

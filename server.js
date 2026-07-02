@@ -341,6 +341,7 @@ async function initDb() {
       FabricID INTEGER,
       UseCount REAL,
       FabricUnit TEXT,
+      TailorFees REAL DEFAULT 0,
       FOREIGN KEY (OrderID) REFERENCES orders(OrderID) ON DELETE CASCADE
     )
   `);
@@ -378,6 +379,7 @@ async function initDb() {
     "ALTER TABLE orderlines ADD COLUMN FabricID INTEGER",
     "ALTER TABLE orderlines ADD COLUMN UseCount REAL",
     "ALTER TABLE orderlines ADD COLUMN FabricUnit TEXT",
+    "ALTER TABLE orderlines ADD COLUMN TailorFees REAL DEFAULT 0",
   ];
   for (const sql of migrations) {
     try {
@@ -519,6 +521,23 @@ async function initDb() {
     /* ignore backfill issues */
   }
 
+  // Rename legacy category names to updated names
+  const categoryRenames = [
+    ["Jacket & Vest", "Jacket"],
+    ["Trousers & Skirt", "Pant"],
+    ["Shirt & Dress", "Shirt"],
+  ];
+  for (const [newName, oldName] of categoryRenames) {
+    try {
+      await dbRun("UPDATE categories SET Name = ? WHERE Name = ?", [
+        newName,
+        oldName,
+      ]);
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
   // Seeding default data if no users exist
   const userCount = await dbGet("SELECT COUNT(*) as count FROM users");
   if (userCount.count === 0) {
@@ -532,13 +551,13 @@ async function initDb() {
 
     // Categories
     const jacketCat = await dbRun("INSERT INTO categories (Name) VALUES (?)", [
-      "Jacket",
+      "Jacket & Vest",
     ]);
     const pantCat = await dbRun("INSERT INTO categories (Name) VALUES (?)", [
-      "Pant",
+      "Trousers & Skirt",
     ]);
     const shirtCat = await dbRun("INSERT INTO categories (Name) VALUES (?)", [
-      "Shirt",
+      "Shirt & Dress",
     ]);
 
     const jacketCatId = jacketCat.id;
@@ -1003,6 +1022,7 @@ app.post("/api/orderlines", async (req, res) => {
     FabricID,
     UseCount,
     FabricUnit,
+    TailorFees,
   } = req.body;
   if (
     !OrderID ||
@@ -1016,7 +1036,7 @@ app.post("/api/orderlines", async (req, res) => {
   }
   try {
     const result = await dbRun(
-      "INSERT INTO orderlines (OrderID, ItemID, CategoryID, SubcatID, Description, Quantity, UnitPrice, LineTotal, FabricID, UseCount, FabricUnit) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO orderlines (OrderID, ItemID, CategoryID, SubcatID, Description, Quantity, UnitPrice, LineTotal, FabricID, UseCount, FabricUnit, TailorFees) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       [
         OrderID,
         ItemID || null,
@@ -1029,6 +1049,7 @@ app.post("/api/orderlines", async (req, res) => {
         FabricID || null,
         UseCount == null ? null : UseCount,
         FabricUnit || null,
+        TailorFees == null ? 0 : TailorFees,
       ],
     );
 
@@ -1063,6 +1084,7 @@ app.put("/api/orderlines/:id", async (req, res) => {
     FabricID,
     UseCount,
     FabricUnit,
+    TailorFees,
   } = req.body;
   if (
     !OrderID ||
@@ -1076,7 +1098,7 @@ app.put("/api/orderlines/:id", async (req, res) => {
   }
   try {
     const result = await dbRun(
-      "UPDATE orderlines SET OrderID = ?, ItemID = ?, CategoryID = ?, SubcatID = ?, Description = ?, Quantity = ?, UnitPrice = ?, LineTotal = ?, FabricID = ?, UseCount = ?, FabricUnit = ? WHERE LineID = ?",
+      "UPDATE orderlines SET OrderID = ?, ItemID = ?, CategoryID = ?, SubcatID = ?, Description = ?, Quantity = ?, UnitPrice = ?, LineTotal = ?, FabricID = ?, UseCount = ?, FabricUnit = ?, TailorFees = ? WHERE LineID = ?",
       [
         OrderID,
         ItemID || null,
@@ -1089,6 +1111,7 @@ app.put("/api/orderlines/:id", async (req, res) => {
         FabricID || null,
         UseCount == null ? null : UseCount,
         FabricUnit || null,
+        TailorFees == null ? 0 : TailorFees,
         req.params.id,
       ],
     );

@@ -133,12 +133,18 @@ const ReportView = (() => {
     calculateItems(orders, totalRevenue, totalExpenses, totalFees);
   }
 
-  async function calculateItems(orders, totalRevenue = 0, totalExpenses = 0, totalFees = 0) {
+  async function calculateItems(
+    orders,
+    totalRevenue = 0,
+    totalExpenses = 0,
+    totalFees = 0,
+  ) {
     let totalItems = 0;
     let totalJackets = 0;
     let totalPants = 0;
     let totalShirts = 0;
     let totalFabricCost = 0;
+    let totalTailorFees = 0;
 
     if (orders.length > 0) {
       const orderIds = orders.map((o) => o.OrderID);
@@ -157,7 +163,7 @@ const ReportView = (() => {
         const qty = line.Quantity || 1;
         totalItems += qty;
 
-        // Categories: 1 = Jacket, 2 = Pant, 3 = Shirt (based on initial DB setup and data)
+        // Categories: 1 = Jacket & Vest, 2 = Trousers & Skirt, 3 = Shirt & Dress
         if (line.CategoryID === 1) totalJackets += qty;
         else if (line.CategoryID === 2) totalPants += qty;
         else if (line.CategoryID === 3) totalShirts += qty;
@@ -169,6 +175,8 @@ const ReportView = (() => {
             totalFabricCost += line.UseCount * fabric.Price;
           }
         }
+
+        totalTailorFees += Number(line.TailorFees) || 0;
       });
     }
 
@@ -180,10 +188,19 @@ const ReportView = (() => {
     const fabricCostEl = document.getElementById("report-total-fabric-cost");
     if (fabricCostEl) fabricCostEl.innerText = fmtCurrency(totalFabricCost);
 
-    // Total Profit = Total Revenue - (Total Expenses + Total Fabric Cost + Total Card Fees)
+    const tailorFeesEl = document.getElementById("report-total-tailor-fees");
+    if (tailorFeesEl) tailorFeesEl.innerText = fmtCurrency(totalTailorFees);
+
+    // Total Profit = Total Revenue - (Total Expenses + Total Fabric Cost + Total Tailor Fees + Total Card Fees)
     const profitEl = document.getElementById("report-total-profit");
     if (profitEl)
-      profitEl.innerText = fmtCurrency(totalRevenue - totalExpenses - totalFabricCost - totalFees);
+      profitEl.innerText = fmtCurrency(
+        totalRevenue -
+          totalExpenses -
+          totalFabricCost -
+          totalTailorFees -
+          totalFees,
+      );
   }
 
   return { init, onFilterTypeChange, loadData };
