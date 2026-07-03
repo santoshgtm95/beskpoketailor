@@ -1,6 +1,12 @@
 /**
  * report.js – Reports Module
  * Beskpoke Tailor Shop
+ *
+ * Report is split into four sections:
+ *   1. Summary            – combined totals across all sale types
+ *   2. Orders             – bespoke tailoring orders
+ *   3. Fabric Sales       – fabric sold directly from inventory
+ *   4. Ready Made Products – ready made product sales
  */
 
 const ReportView = (() => {
@@ -8,6 +14,9 @@ const ReportView = (() => {
   let customersList = [];
   let expensesList = [];
   let fabricList = [];
+  let fabricSalesList = [];
+  let readyMadeSalesList = [];
+  let readyMadeProductsList = [];
 
   const fType = () => document.getElementById("report-filter-type");
   const fDaily = () => document.getElementById("report-daily-filter");
@@ -38,57 +47,238 @@ const ReportView = (() => {
     loadData();
   }
 
+  // Returns a predicate matching a YYYY-MM-DD date string against the
+  // currently selected period.
+  function periodMatcher() {
+    const type = fType().value;
+    let prefix = "";
+    if (type === "daily") prefix = valDate().value;
+    else if (type === "monthly") prefix = valMonth().value; // YYYY-MM
+    else if (type === "yearly") prefix = valYear().value; // YYYY
+    return (dateStr) => String(dateStr || "").startsWith(prefix);
+  }
+
   async function loadData() {
     try {
-      ordersList = await DB.orders.getAll();
-      customersList = await DB.customers.getAll();
-      expensesList = await DB.expenses.getAll();
-      fabricList = await DB.inventory.getAll().catch(() => []);
+      [
+        ordersList,
+        customersList,
+        expensesList,
+        fabricList,
+        fabricSalesList,
+        readyMadeSalesList,
+        readyMadeProductsList,
+      ] = await Promise.all([
+        DB.orders.getAll(),
+        DB.customers.getAll(),
+        DB.expenses.getAll(),
+        DB.inventory.getAll().catch(() => []),
+        DB.fabricSales.getAll().catch(() => []),
+        DB.readyMadeSales.getAll().catch(() => []),
+        DB.readyMadeProducts.getAll().catch(() => []),
+      ]);
 
-      const type = fType().value;
-      let filtered = [];
-      let filteredExpenses = [];
+      const inPeriod = periodMatcher();
 
-      if (type === "daily") {
-        const d = valDate().value;
-        filtered = ordersList.filter((o) => o.OrderDate === d);
-        filteredExpenses = expensesList.filter((e) => e.ExpenseDate === d);
-      } else if (type === "monthly") {
-        const m = valMonth().value; // YYYY-MM
-        filtered = ordersList.filter((o) => o.OrderDate.startsWith(m));
-        filteredExpenses = expensesList.filter((e) =>
-          String(e.ExpenseDate).startsWith(m),
-        );
-      } else if (type === "yearly") {
-        const y = valYear().value; // YYYY
-        filtered = ordersList.filter((o) => o.OrderDate.startsWith(y));
-        filteredExpenses = expensesList.filter((e) =>
-          String(e.ExpenseDate).startsWith(y),
-        );
-      }
+      const orders = ordersList.filter((o) => inPeriod(o.OrderDate));
+      const expenses = expensesList.filter((e) => inPeriod(e.ExpenseDate));
+      const fabricSales = fabricSalesList.filter((s) => inPeriod(s.SaleDate));
+      const readyMadeSales = readyMadeSalesList.filter((s) =>
+        inPeriod(s.SaleDate),
+      );
 
-      renderReport(filtered, filteredExpenses);
+      await renderReport(orders, expenses, fabricSales, readyMadeSales);
     } catch (err) {
       console.error(err);
       UI.showToast("Error loading reports", "error");
     }
   }
 
-  function renderReport(orders, expenses = []) {
-    let totalOrders = orders.length;
-    let totalRevenue = 0;
-    let totalExpenses = 0;
-    let totalFees = 0;
+  function setText(id, text) {
+    const el = document.getElementById(id);
+    if (el) el.innerText = text;
+  }
 
+  const fmtQty = (n) =>
+    Number.isInteger(n) ? String(n) : (Math.round(n * 100) / 100).toFixed(2);
+
+  async function renderReport(orders, expenses, fabricSales, readyMadeSales) {
+    /* ── Section 2: Orders ─────────────────────────────────── */
+    const orderStats = {
+      count: orders.length,
+      revenue: 0,
+      cardFees: 0,
+      fabricCost: 0,
+      tailorFees: 0,
+      items: 0,
+      jackets: 0,
+      pants: 0,
+      shirts: 0,
+    };
+
+    orders.forEach((o) => {
+      orderStats.revenue += o.TotalAmount || 0;
+      orderStats.cardFees += o.TransactionFee || 0;
+    });
+
+    const fabricMap = Object.fromEntries(
+      fabricList.map((f) => [f.FabricID, f]),
+    );
+
+    if (orders.length > 0) {
+      const orderIds = new Set(orders.map((o) => o.OrderID));
+      const allOrderLines = await DB.orderlines.getAll();
+
+      allOrderLines
+        .filter((line) => orderIds.has(line.OrderID))
+        .forEach((line) => {
+          const qty = line.Quantity || 1;
+          orderStats.items += qty;
+
+          // Categories: 1 = Jacket & Vest, 2 = Trousers & Skirt, 3 = Shirt & Dress
+          if (line.CategoryID === 1) orderStats.jackets += qty;
+          else if (line.CategoryID === 2) orderStats.pants += qty;
+          else if (line.CategoryID === 3) orderStats.shirts += qty;
+
+          // Fabric cost: UseCount × fabric unit price
+          if (line.FabricID && line.UseCount > 0) {
+            const fabric = fabricMap[line.FabricID];
+            if (fabric && fabric.Price > 0) {
+              orderStats.fabricCost += line.UseCount * fabric.Price;
+            }
+          }
+
+          orderStats.tailorFees += Number(line.TailorFees) || 0;
+        });
+    }
+
+    orderStats.profit =
+      orderStats.revenue -
+      orderStats.fabricCost -
+      orderStats.tailorFees -
+      orderStats.cardFees;
+
+    /* ── Section 3: Fabric Sales ───────────────────────────── */
+    const fsStats = {
+      count: fabricSales.length,
+      revenue: 0,
+      fabricCost: 0,
+      qty: 0,
+    };
+
+    fabricSales.forEach((s) => {
+      const qty = s.Quantity || 0;
+      fsStats.revenue += s.TotalAmount || 0;
+      // UnitPrice is the fabric cost per unit recorded at sale time
+      fsStats.fabricCost += qty * (s.UnitPrice || 0);
+      fsStats.qty += qty;
+    });
+
+    fsStats.profit = fsStats.revenue - fsStats.fabricCost;
+
+    /* ── Section 4: Ready Made Products ────────────────────── */
+    const productMap = Object.fromEntries(
+      readyMadeProductsList.map((p) => [p.ProductID, p]),
+    );
+
+    const rmStats = {
+      count: readyMadeSales.length,
+      revenue: 0,
+      cost: 0,
+      fabricCost: 0,
+      tailorFees: 0,
+      units: 0,
+    };
+
+    readyMadeSales.forEach((s) => {
+      const qty = s.Quantity || 0;
+      rmStats.revenue += s.TotalAmount || 0;
+      rmStats.units += qty;
+
+      const product = productMap[s.ProductID];
+      if (product) {
+        rmStats.cost += (product.Cost || 0) * qty;
+        rmStats.tailorFees += (product.TailorFees || 0) * qty;
+
+        if (product.FabricID && product.FabricQtyUsed > 0) {
+          const fabric = fabricMap[product.FabricID];
+          if (fabric && fabric.Price > 0) {
+            rmStats.fabricCost += product.FabricQtyUsed * fabric.Price * qty;
+          }
+        }
+      }
+    });
+
+    rmStats.profit =
+      rmStats.revenue - rmStats.cost - rmStats.fabricCost - rmStats.tailorFees;
+
+    /* ── Section 1: Summary ────────────────────────────────── */
+    const totalExpenses = expenses.reduce((sum, e) => sum + (e.Amount || 0), 0);
+
+    const summary = {
+      revenue: orderStats.revenue + fsStats.revenue + rmStats.revenue,
+      expenses: totalExpenses,
+      fabricCost:
+        orderStats.fabricCost + fsStats.fabricCost + rmStats.fabricCost,
+      tailorFees: orderStats.tailorFees + rmStats.tailorFees,
+      cardFees: orderStats.cardFees,
+      profit:
+        orderStats.profit + fsStats.profit + rmStats.profit - totalExpenses,
+      transactions: orderStats.count + fsStats.count + rmStats.count,
+      items: orderStats.items + rmStats.units,
+    };
+
+    /* ── Render ────────────────────────────────────────────── */
+    // Summary section
+    setText("report-sum-revenue", fmtCurrency(summary.revenue));
+    setText("report-sum-expenses", fmtCurrency(summary.expenses));
+    setText("report-sum-fabric-cost", fmtCurrency(summary.fabricCost));
+    setText("report-sum-tailor-fees", fmtCurrency(summary.tailorFees));
+    setText("report-sum-card-fees", fmtCurrency(summary.cardFees));
+    setText("report-sum-profit", fmtCurrency(summary.profit));
+    setText("report-sum-transactions", summary.transactions);
+    setText("report-sum-items", summary.items);
+    setText("report-sum-fabric-qty", fmtQty(fsStats.qty));
+    setText("report-sum-rm-units", rmStats.units);
+
+    // Orders section
+    setText("report-order-revenue", fmtCurrency(orderStats.revenue));
+    setText("report-order-fabric-cost", fmtCurrency(orderStats.fabricCost));
+    setText("report-order-tailor-fees", fmtCurrency(orderStats.tailorFees));
+    setText("report-order-card-fees", fmtCurrency(orderStats.cardFees));
+    setText("report-order-profit", fmtCurrency(orderStats.profit));
+    setText("report-order-count", orderStats.count);
+    setText("report-order-items", orderStats.items);
+    setText("report-order-jackets", orderStats.jackets);
+    setText("report-order-pants", orderStats.pants);
+    setText("report-order-shirts", orderStats.shirts);
+
+    // Fabric Sales section
+    setText("report-fs-revenue", fmtCurrency(fsStats.revenue));
+    setText("report-fs-fabric-cost", fmtCurrency(fsStats.fabricCost));
+    setText("report-fs-profit", fmtCurrency(fsStats.profit));
+    setText("report-fs-count", fsStats.count);
+    setText("report-fs-qty", fmtQty(fsStats.qty));
+
+    // Ready Made Products section
+    setText("report-rm-revenue", fmtCurrency(rmStats.revenue));
+    setText("report-rm-cost", fmtCurrency(rmStats.cost));
+    setText("report-rm-fabric-cost", fmtCurrency(rmStats.fabricCost));
+    setText("report-rm-tailor-fees", fmtCurrency(rmStats.tailorFees));
+    setText("report-rm-profit", fmtCurrency(rmStats.profit));
+    setText("report-rm-count", rmStats.count);
+    setText("report-rm-units", rmStats.units);
+
+    renderOrderTable(orders);
+  }
+
+  function renderOrderTable(orders) {
     const tbody = document.getElementById("report-table-body");
     tbody.innerHTML = "";
 
     orders.sort((a, b) => new Date(b.OrderDate) - new Date(a.OrderDate)); // Descending
 
     orders.forEach((o) => {
-      totalRevenue += o.TotalAmount || 0;
-      totalFees += o.TransactionFee || 0;
-
       const cust = customersList.find((c) => c.CustomerID === o.CustomerID);
       const custName = cust ? cust.Name : "Unknown";
 
@@ -112,95 +302,6 @@ const ReportView = (() => {
     if (orders.length === 0) {
       tbody.innerHTML = `<tr><td colspan="7" class="text-center">No orders found for this period.</td></tr>`;
     }
-
-    expenses.forEach((e) => {
-      totalExpenses += e.Amount || 0;
-    });
-
-    document.getElementById("report-total-orders").innerText = totalOrders;
-    document.getElementById("report-total-revenue").innerText =
-      `${fmtCurrency(totalRevenue)}`;
-    const expEl = document.getElementById("report-total-expenses");
-    if (expEl) expEl.innerText = `${fmtCurrency(totalExpenses)}`;
-
-    const feesEl = document.getElementById("report-total-fees");
-    if (feesEl) feesEl.innerText = `${fmtCurrency(totalFees)}`;
-
-    // Profit is finalized in calculateItems() once fabric cost is known
-    const profitEl = document.getElementById("report-total-profit");
-    if (profitEl) profitEl.innerText = fmtCurrency(0);
-
-    calculateItems(orders, totalRevenue, totalExpenses, totalFees);
-  }
-
-  async function calculateItems(
-    orders,
-    totalRevenue = 0,
-    totalExpenses = 0,
-    totalFees = 0,
-  ) {
-    let totalItems = 0;
-    let totalJackets = 0;
-    let totalPants = 0;
-    let totalShirts = 0;
-    let totalFabricCost = 0;
-    let totalTailorFees = 0;
-
-    if (orders.length > 0) {
-      const orderIds = orders.map((o) => o.OrderID);
-      const allOrderLines = await DB.orderlines.getAll();
-
-      // Only count lines belonging to the currently filtered orders
-      const relevantLines = allOrderLines.filter((line) =>
-        orderIds.includes(line.OrderID),
-      );
-
-      const fabricMap = Object.fromEntries(
-        fabricList.map((f) => [f.FabricID, f]),
-      );
-
-      relevantLines.forEach((line) => {
-        const qty = line.Quantity || 1;
-        totalItems += qty;
-
-        // Categories: 1 = Jacket & Vest, 2 = Trousers & Skirt, 3 = Shirt & Dress
-        if (line.CategoryID === 1) totalJackets += qty;
-        else if (line.CategoryID === 2) totalPants += qty;
-        else if (line.CategoryID === 3) totalShirts += qty;
-
-        // Fabric cost: UseCount × fabric unit price
-        if (line.FabricID && line.UseCount > 0) {
-          const fabric = fabricMap[line.FabricID];
-          if (fabric && fabric.Price > 0) {
-            totalFabricCost += line.UseCount * fabric.Price;
-          }
-        }
-
-        totalTailorFees += Number(line.TailorFees) || 0;
-      });
-    }
-
-    document.getElementById("report-total-items").innerText = totalItems;
-    document.getElementById("report-total-jackets").innerText = totalJackets;
-    document.getElementById("report-total-pants").innerText = totalPants;
-    document.getElementById("report-total-shirts").innerText = totalShirts;
-
-    const fabricCostEl = document.getElementById("report-total-fabric-cost");
-    if (fabricCostEl) fabricCostEl.innerText = fmtCurrency(totalFabricCost);
-
-    const tailorFeesEl = document.getElementById("report-total-tailor-fees");
-    if (tailorFeesEl) tailorFeesEl.innerText = fmtCurrency(totalTailorFees);
-
-    // Total Profit = Total Revenue - (Total Expenses + Total Fabric Cost + Total Tailor Fees + Total Card Fees)
-    const profitEl = document.getElementById("report-total-profit");
-    if (profitEl)
-      profitEl.innerText = fmtCurrency(
-        totalRevenue -
-          totalExpenses -
-          totalFabricCost -
-          totalTailorFees -
-          totalFees,
-      );
   }
 
   return { init, onFilterTypeChange, loadData };
