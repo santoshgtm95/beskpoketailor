@@ -82,7 +82,7 @@ const ReadyMadePage = (() => {
         p.Name.toLowerCase().includes(q) ||
         p.Category.toLowerCase().includes(q) ||
         (p.Type || "").toLowerCase().includes(q) ||
-        p.Size.toLowerCase().includes(q) ||
+        (p.Size || "").toLowerCase().includes(q) ||
         (p.Color || "").toLowerCase().includes(q)
       );
     });
@@ -110,7 +110,7 @@ const ReadyMadePage = (() => {
           <td><strong>${sanitize(p.Name)}</strong></td>
           <td><span class="badge badge-accent">${sanitize(p.Category)}</span></td>
           <td>${sanitize(p.Type || "—")}</td>
-          <td><span class="font-bold">${sanitize(p.Size)}</span></td>
+          <td><span class="font-bold">${sanitize(p.Size || "—")}</span></td>
           <td>${sanitize(p.Color || "—")}</td>
           <td class="text-right font-bold">${p.Count} pcs</td>
           <td class="text-right font-mono">${fmtCurrency(p.Cost)}</td>
@@ -118,7 +118,7 @@ const ReadyMadePage = (() => {
           <td class="text-right font-mono text-muted">${fmtCurrency(p.TailorFees)}</td>
           <td>${fabricInfo}</td>
           <td class="text-right">
-            <button class="btn btn-gold btn-sm" onclick="ReadyMadePage.openSell(${p.ProductID})">💸 Sell</button>
+            <button class="btn btn-gold btn-sm" style="width:100%;margin-bottom:10px;" onclick="ReadyMadePage.openSell(${p.ProductID})">💸 Sell</button>
             <button class="btn btn-ghost btn-sm" onclick="ReadyMadePage.edit(${p.ProductID})">✏️</button>
             ${Auth.isAdmin() ? `<button class="btn btn-danger btn-sm" onclick="ReadyMadePage.deleteProduct(${p.ProductID})">🗑</button>` : ""}
           </td>
@@ -144,7 +144,7 @@ const ReadyMadePage = (() => {
       return (
         s.ProductName.toLowerCase().includes(q) ||
         s.ProductCategory.toLowerCase().includes(q) ||
-        s.ProductSize.toLowerCase().includes(q) ||
+        (s.ProductSize || "").toLowerCase().includes(q) ||
         s.SaleDate.includes(q)
       );
     });
@@ -171,7 +171,7 @@ const ReadyMadePage = (() => {
           <td>${fmtDate(s.SaleDate)}</td>
           <td><strong>${sanitize(s.ProductName)}</strong></td>
           <td><span class="badge badge-accent">${sanitize(s.ProductCategory)}</span></td>
-          <td>${sanitize(s.ProductSize)}</td>
+          <td>${sanitize(s.ProductSize || "—")}</td>
           <td class="text-right font-bold">${s.Quantity} pcs</td>
           <td class="text-right font-mono">${fmtCurrency(s.SellingPrice)}</td>
           <td class="text-right font-bold font-mono text-gold">${fmtCurrency(s.TotalAmount)}</td>
@@ -228,7 +228,7 @@ const ReadyMadePage = (() => {
       document.getElementById("rm-name").value = p.Name;
       document.getElementById("rm-category").value = p.Category;
       document.getElementById("rm-type").value = p.Type || "";
-      document.getElementById("rm-size").value = p.Size;
+      document.getElementById("rm-size").value = p.Size || "";
       document.getElementById("rm-color").value = p.Color || "";
       document.getElementById("rm-cost").value = p.Cost;
       document.getElementById("rm-selling-price").value = p.SellingPrice;
@@ -266,7 +266,6 @@ const ReadyMadePage = (() => {
       !validateFields([
         { el: nameEl, msg: "Product Name is required." },
         { el: catEl, msg: "Category is required." },
-        { el: sizeEl, msg: "Size is required." },
         { el: costEl, msg: "Cost Price is required." },
         { el: sellPriceEl, msg: "Selling Price is required." },
         { el: countEl, msg: "Quantity is required." },

@@ -1867,6 +1867,10 @@ const OrdersPage = (() => {
     let linesHtml = "";
     let total = 0;
     let totalTailorFees = 0;
+    const allSubcats = await DB.subcategories.getAll().catch(() => []);
+    const subcatMap = Object.fromEntries(
+      allSubcats.map((s) => [s.SubcatID, s]),
+    );
     for (const l of lines) {
       let desc = l.Description;
       if (!desc) {
@@ -1911,8 +1915,18 @@ const OrdersPage = (() => {
       formattedDesc += fabricHtml;
       formattedDesc += tailorFeesHtml;
 
+      const subImg = l.SubcatID ? subcatMap[l.SubcatID]?.Image : "";
+      const subImgHtml = subImg
+        ? `<img src="${subImg}" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--border);flex-shrink:0;" />`
+        : `<div style="display:flex;width:64px;height:64px;border-radius:6px;background:linear-gradient(135deg, var(--gold-dark), var(--gold));color:#fff;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;">🧵</div>`;
+
       linesHtml += `<tr>
-        <td style="vertical-align: top; padding-top: 14px;">${formattedDesc}</td>
+        <td style="vertical-align: top; padding-top: 14px;">
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            ${subImgHtml}
+            <div style="flex:1;min-width:0;">${formattedDesc}</div>
+          </div>
+        </td>
         <td class="text-right" style="vertical-align: top; padding-top: 14px;">${l.Quantity}</td>
         <td class="text-right" style="vertical-align: top; padding-top: 14px;">${fmtCurrency(l.UnitPrice)}</td>
         <td class="text-right font-bold text-gold" style="vertical-align: top; padding-top: 14px; color: var(--text-primary);">${fmtCurrency(l.LineTotal)}</td>
@@ -1933,12 +1947,19 @@ const OrdersPage = (() => {
 
     document.getElementById("view-order-content").innerHTML = `
       <div class="grid-2 mb-3" style="background: var(--bg-panel); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border);">
-        <div>
-          <div class="text-muted" style="font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Customer Info</div>
-          <div class="font-bold" style="font-size:14px;">Name: ${sanitize(cust?.Name || "—")}</div>
-          <div class="font-bold" style="font-size:14px;margin-top:2px;">Phone: ${sanitize(cust?.Phone || "No phone")} </div>
-          <div class="font-bold" style="font-size:14px;margin-top:2px;">Email: ${sanitize(cust?.Email || "No email")}</div>
-          <div class="font-bold" style="font-size:14px;margin-top:2px;">Address: ${sanitize(cust?.Address || "No address")}</div>
+        <div style="display:flex;gap:14px;align-items:flex-start;">
+          ${
+            cust?.Image
+              ? `<img src="${cust.Image}" alt="${sanitize(cust?.Name || "")}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0;" />`
+              : `<div style="display:flex;width:80px;height:80px;border-radius:8px;background:linear-gradient(135deg, var(--gold-dark), var(--gold));color:#fff;align-items:center;justify-content:center;font-size:32px;flex-shrink:0;">👤</div>`
+          }
+          <div>
+            <div class="text-muted" style="font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Customer Info</div>
+            <div class="font-bold" style="font-size:14px;">Name: ${sanitize(cust?.Name || "—")}</div>
+            <div class="font-bold" style="font-size:14px;margin-top:2px;">Phone: ${sanitize(cust?.Phone || "No phone")} </div>
+            <div class="font-bold" style="font-size:14px;margin-top:2px;">Email: ${sanitize(cust?.Email || "No email")}</div>
+            <div class="font-bold" style="font-size:14px;margin-top:2px;">Address: ${sanitize(cust?.Address || "No address")}</div>
+          </div>
         </div>
         <div style="text-align: right;">
           <div class="font-bold" style="font-size:20px;">${fmtOrderId(order.OrderID)}</div>

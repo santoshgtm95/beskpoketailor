@@ -167,6 +167,7 @@ const DB = {
   fabricSales: {
     getAll: ()         => apiRequest('/fabric-sales'),
     add:    (r)        => apiRequest('/fabric-sales', { method: 'POST', body: r }),
+    delete: (id)       => apiRequest(`/fabric-sales/${id}`, { method: 'DELETE' }),
   },
 
   // Ready Made Products

@@ -1565,6 +1565,21 @@ app.post("/api/fabric-sales", async (req, res) => {
   }
 });
 
+app.delete("/api/fabric-sales/:id", async (req, res) => {
+  try {
+    const sale = await dbGet("SELECT FabricID, Quantity FROM fabric_sales WHERE SaleID = ?", [req.params.id]);
+    if (!sale) return res.status(404).json({ message: "Sale not found" });
+
+    const now = bangkokNowIso();
+    // Restore fabric stock
+    await dbRun("UPDATE fabric_inventory SET Count = Count + ?, UpdatedAt = ? WHERE FabricID = ?", [sale.Quantity, now, sale.FabricID]);
+    await dbRun("DELETE FROM fabric_sales WHERE SaleID = ?", [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // ── Ready Made Products Endpoints ──────────────────────────────────
 app.get("/api/ready-made-products", async (req, res) => {
   try {
@@ -1599,14 +1614,13 @@ app.post("/api/ready-made-products", async (req, res) => {
   const { Name, Category, Type, Size, Cost, FabricID, FabricQtyUsed, Color, Count, SellingPrice, TailorFees } = req.body;
   if (!Name) return res.status(400).json({ message: "Name is required" });
   if (!Category) return res.status(400).json({ message: "Category is required" });
-  if (!Size) return res.status(400).json({ message: "Size is required" });
   if (Cost == null) return res.status(400).json({ message: "Cost is required" });
   if (Count == null || Count < 0) return res.status(400).json({ message: "Count is required" });
   if (SellingPrice == null) return res.status(400).json({ message: "Selling Price is required" });
 
   try {
     const now = bangkokNowIso();
-    
+
     // If fabric is chosen, check and subtract from inventory
     if (FabricID && FabricQtyUsed > 0 && Count > 0) {
       const fabric = await dbGet("SELECT Count, Name FROM fabric_inventory WHERE FabricID = ?", [FabricID]);
@@ -1621,7 +1635,7 @@ app.post("/api/ready-made-products", async (req, res) => {
     const result = await dbRun(`
       INSERT INTO ready_made_products (Name, Category, Type, Size, Cost, FabricID, FabricQtyUsed, Color, Count, SellingPrice, TailorFees, CreatedAt, UpdatedAt) 
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [Name, Category, Type || null, Size, Cost, FabricID || null, FabricQtyUsed || 0, Color || null, Count, SellingPrice, TailorFees || 0, now, now]);
+    `, [Name, Category, Type || null, Size || "", Cost, FabricID || null, FabricQtyUsed || 0, Color || null, Count, SellingPrice, TailorFees || 0, now, now]);
 
     res.status(201).json(result.id);
   } catch (err) {
@@ -1633,7 +1647,6 @@ app.put("/api/ready-made-products/:id", async (req, res) => {
   const { Name, Category, Type, Size, Cost, FabricID, FabricQtyUsed, Color, Count, SellingPrice, TailorFees } = req.body;
   if (!Name) return res.status(400).json({ message: "Name is required" });
   if (!Category) return res.status(400).json({ message: "Category is required" });
-  if (!Size) return res.status(400).json({ message: "Size is required" });
   if (Cost == null) return res.status(400).json({ message: "Cost is required" });
   if (Count == null || Count < 0) return res.status(400).json({ message: "Count is required" });
   if (SellingPrice == null) return res.status(400).json({ message: "Selling Price is required" });
@@ -1646,7 +1659,7 @@ app.put("/api/ready-made-products/:id", async (req, res) => {
       UPDATE ready_made_products 
       SET Name = ?, Category = ?, Type = ?, Size = ?, Cost = ?, FabricID = ?, FabricQtyUsed = ?, Color = ?, Count = ?, SellingPrice = ?, TailorFees = ?, UpdatedAt = ?
       WHERE ProductID = ?
-    `, [Name, Category, Type || null, Size, Cost, FabricID || null, FabricQtyUsed || 0, Color || null, Count, SellingPrice, TailorFees || 0, now, req.params.id]);
+    `, [Name, Category, Type || null, Size || "", Cost, FabricID || null, FabricQtyUsed || 0, Color || null, Count, SellingPrice, TailorFees || 0, now, req.params.id]);
 
     if (result.changes === 0) return res.status(404).json({ message: "Product not found" });
     res.json({ success: true });

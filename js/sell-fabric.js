@@ -106,7 +106,7 @@ const SellFabricPage = (() => {
     const tbody = document.getElementById("fabric-sales-tbody");
     tbody.innerHTML =
       paged.length === 0
-        ? `<tr><td colspan="8" class="table-empty">No sales history found.</td></tr>`
+        ? `<tr><td colspan="9" class="table-empty">No sales history found.</td></tr>`
         : paged
             .map(
               (s) => `<tr>
@@ -118,6 +118,9 @@ const SellFabricPage = (() => {
           <td class="text-right font-mono">${fmtCurrency(s.UnitPrice)}</td>
           <td class="text-right font-mono">${fmtCurrency(s.SellingPrice)}</td>
           <td class="text-right font-bold font-mono text-gold">${fmtCurrency(s.TotalAmount)}</td>
+          <td class="text-right">
+            ${Auth.isAdmin() ? `<button class="btn btn-danger btn-sm" onclick="SellFabricPage.deleteSale(${s.SaleID})" title="Delete sale">🗑</button>` : ""}
+          </td>
         </tr>`,
             )
             .join("");
@@ -197,5 +200,25 @@ const SellFabricPage = (() => {
     }
   }
 
-  return { load, onFabricChange, calcTotal, save };
+  async function deleteSale(saleId) {
+    const sale = allSales.find((s) => s.SaleID === saleId);
+    const label = sale
+      ? `${sale.FabricName} — ${sale.Quantity.toFixed(2)} ${sale.FabricUnit}`
+      : `#${saleId}`;
+    const ok = await Confirm.show(
+      `Delete sale ${label}? The sold quantity will be returned to inventory.`,
+      "Delete Fabric Sale",
+      true,
+    );
+    if (!ok) return;
+    try {
+      await DB.fabricSales.delete(saleId);
+      Toast.success("Sale deleted. Stock restored to inventory.");
+      await load();
+    } catch (err) {
+      Toast.error("Failed to delete sale: " + err.message);
+    }
+  }
+
+  return { load, onFabricChange, calcTotal, save, deleteSale };
 })();
