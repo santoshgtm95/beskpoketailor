@@ -152,7 +152,7 @@ const DashboardPage = (() => {
             yAxisID: 'yRev',
           },
           {
-            label: 'Orders',
+            label: 'Transactions',
             data: ordersData,
             type: 'line',
             borderColor: '#5baaff',
@@ -175,7 +175,7 @@ const DashboardPage = (() => {
             callbacks: {
               label: ctx => {
                 if (ctx.datasetIndex === 0) return ` Revenue: THB ${ctx.parsed.y.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
-                return ` Orders: ${ctx.parsed.y}`;
+                return ` Transactions: ${ctx.parsed.y}`;
               }
             }
           }
@@ -189,7 +189,7 @@ const DashboardPage = (() => {
     });
   }
 
-  function buildProfitDonut(totalRevenue, totalExpenses) {
+  function buildProfitDonut(totalRevenue, totalExpenses, breakdown) {
     destroyChart('profit-donut');
     const ctx = document.getElementById('chart-profit-donut');
     if (!ctx || !window.Chart) return;
@@ -200,8 +200,15 @@ const DashboardPage = (() => {
     // Summary text
     const summary = document.getElementById('profit-summary');
     if (summary) {
+      const breakdownHtml = breakdown
+        ? `
+        <div class="profit-row" style="font-size:12px;opacity:0.85;"><span>• Orders</span><span>${fmtCurrency(breakdown.orders)}</span></div>
+        <div class="profit-row" style="font-size:12px;opacity:0.85;"><span>• Fabric Sales</span><span>${fmtCurrency(breakdown.fabric)}</span></div>
+        <div class="profit-row" style="font-size:12px;opacity:0.85;"><span>• Ready Made</span><span>${fmtCurrency(breakdown.readyMade)}</span></div>`
+        : '';
       summary.innerHTML = `
         <div class="profit-row"><span>Revenue</span><span style="color:var(--gold)">${fmtCurrency(totalRevenue)}</span></div>
+        ${breakdownHtml}
         <div class="profit-row"><span>Expenses</span><span style="color:var(--accent-red)">${fmtCurrency(totalExpenses)}</span></div>
         <div class="profit-row profit-net"><span>Net Profit</span><span style="color:${profitColor}">${fmtCurrency(netProfit)}</span></div>
       `;
@@ -441,7 +448,7 @@ const DashboardPage = (() => {
     if (greetEl) greetEl.textContent = `${greet}, ${user?.Name || user?.Username}!`;
 
     // Fetch all data in parallel
-    const [allOrders, allCustomers, allItems, allLines, allExpenses, allFabrics, allOrderLines] = await Promise.all([
+    const [allOrders, allCustomers, allItems, allLines, allExpenses, allFabrics, allOrderLines, allFabricSales, allReadyMadeSales] = await Promise.all([
       DB.orders.getAll(),
       DB.customers.getAll(),
       DB.items.getAll(),
@@ -449,6 +456,8 @@ const DashboardPage = (() => {
       DB.expenses.getAll(),
       DB.inventory.getAll(),
       DB.orderlines.getAll(),
+      DB.fabricSales.getAll().catch(() => []),
+      DB.readyMadeSales.getAll().catch(() => []),
     ]);
 
     // Build used-fabric map
@@ -462,6 +471,8 @@ const DashboardPage = (() => {
     // Period filter
     const filteredOrders   = filterByPeriod(allOrders,   'OrderDate');
     const filteredExpenses = filterByPeriod(allExpenses,  'ExpenseDate');
+    const filteredFabricSales    = filterByPeriod(allFabricSales,    'SaleDate');
+    const filteredReadyMadeSales = filterByPeriod(allReadyMadeSales, 'SaleDate');
     const filteredLines    = allLines.filter(l => {
       const order = allOrders.find(o => o.OrderID === l.OrderID);
       if (!order) return false;
@@ -472,9 +483,12 @@ const DashboardPage = (() => {
     });
 
     // KPI calculations
-    const totalRevenue   = filteredOrders.reduce((s, o) => s + (o.TotalAmount || 0), 0);
+    const orderRevenue        = filteredOrders.reduce((s, o) => s + (o.TotalAmount || 0), 0);
+    const fabricSalesTotal    = filteredFabricSales.reduce((s, x) => s + (x.TotalAmount || 0), 0);
+    const readyMadeSalesTotal = filteredReadyMadeSales.reduce((s, x) => s + (x.TotalAmount || 0), 0);
+    const totalRevenue   = orderRevenue + fabricSalesTotal + readyMadeSalesTotal;
     const totalExpenses  = filteredExpenses.reduce((s, e) => s + (e.Amount || 0), 0);
-    const avgOrderVal    = filteredOrders.length ? totalRevenue / filteredOrders.length : 0;
+    const avgOrderVal    = filteredOrders.length ? orderRevenue / filteredOrders.length : 0;
 
     // Update KPI cards
     setText('stat-total-revenue',   fmtCurrency(totalRevenue));
@@ -483,10 +497,24 @@ const DashboardPage = (() => {
     setText('stat-total-expenses',  fmtCurrency(totalExpenses));
     setText('stat-avg-order',       fmtCurrency(avgOrderVal));
     setText('stat-inventory-count', allFabrics.length);
+    setText('stat-fabric-sales',    fmtCurrency(fabricSalesTotal));
+    setText('kpi-fabric-sales-count', `${filteredFabricSales.length} sale${filteredFabricSales.length !== 1 ? 's' : ''}`);
+    setText('stat-ready-made-sales', fmtCurrency(readyMadeSalesTotal));
+    setText('kpi-ready-made-count',  `${filteredReadyMadeSales.length} sale${filteredReadyMadeSales.length !== 1 ? 's' : ''}`);
 
     // ── Render Charts ──
-    buildRevenueOrdersChart(filteredOrders);
-    buildProfitDonut(totalRevenue, totalExpenses);
+    // Combine all revenue sources (orders + fabric sales + ready made) for the revenue chart
+    const revenueRows = [
+      ...filteredOrders,
+      ...filteredFabricSales.map(s => ({ OrderDate: s.SaleDate, TotalAmount: s.TotalAmount })),
+      ...filteredReadyMadeSales.map(s => ({ OrderDate: s.SaleDate, TotalAmount: s.TotalAmount })),
+    ];
+    buildRevenueOrdersChart(revenueRows);
+    buildProfitDonut(totalRevenue, totalExpenses, {
+      orders: orderRevenue,
+      fabric: fabricSalesTotal,
+      readyMade: readyMadeSalesTotal,
+    });
     buildExpensesBar(filteredExpenses);
     buildTopItemsChart(filteredLines, allItems);
     buildInventoryChart(allFabrics, usedMap);

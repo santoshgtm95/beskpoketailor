@@ -182,5 +182,6 @@ const DB = {
   readyMadeSales: {
     getAll: ()         => apiRequest('/ready-made-sales'),
     add:    (r)        => apiRequest('/ready-made-sales', { method: 'POST', body: r }),
+    delete: (id)       => apiRequest(`/ready-made-sales/${id}`, { method: 'DELETE' }),
   },
 };

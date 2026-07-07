@@ -163,7 +163,7 @@ const ReadyMadePage = (() => {
     const tbody = document.getElementById("ready-sales-tbody");
     tbody.innerHTML =
       paged.length === 0
-        ? `<tr><td colspan="8" class="table-empty">No sales history found.</td></tr>`
+        ? `<tr><td colspan="9" class="table-empty">No sales history found.</td></tr>`
         : paged
             .map(
               (s) => `<tr>
@@ -175,6 +175,9 @@ const ReadyMadePage = (() => {
           <td class="text-right font-bold">${s.Quantity} pcs</td>
           <td class="text-right font-mono">${fmtCurrency(s.SellingPrice)}</td>
           <td class="text-right font-bold font-mono text-gold">${fmtCurrency(s.TotalAmount)}</td>
+          <td class="text-right">
+            ${Auth.isAdmin() ? `<button class="btn btn-danger btn-sm" onclick="ReadyMadePage.deleteSale(${s.SaleID})">🗑</button>` : ""}
+          </td>
         </tr>`
             )
             .join("");
@@ -335,6 +338,23 @@ const ReadyMadePage = (() => {
     }
   }
 
+  async function deleteSale(id) {
+    const ok = await Confirm.show(
+      "Delete this sale? The sold quantity will be returned to product stock.",
+      "Delete Sale",
+      true,
+    );
+    if (!ok) return;
+
+    try {
+      await DB.readyMadeSales.delete(id);
+      Toast.success("Sale deleted and stock restored.");
+      await Promise.all([fetchProducts(), loadSalesHistory()]);
+    } catch (err) {
+      Toast.error("Failed to delete sale: " + err.message);
+    }
+  }
+
   // ── Selling Dialog Logic ──────────────────────────────────────────
   async function openSell(id) {
     try {
@@ -427,6 +447,7 @@ const ReadyMadePage = (() => {
     edit,
     save,
     deleteProduct,
+    deleteSale,
     openSell,
     calcSaleTotal,
     saveSale,

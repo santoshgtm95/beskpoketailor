@@ -8,8 +8,19 @@
           <div class="card-title">
             <span class="title-icon">👤</span> Customer &amp; Order Info
           </div>
-          <div id="order-number-display" style="font-size:13px;font-weight:700;color:var(--gold);letter-spacing:0.5px;opacity:0.85;">
-            Order <span id="order-number-value">----</span>
+          <div id="order-number-display" style="display:flex;align-items:center;gap:8px;">
+            <label for="order-id-input" style="font-size:13px;font-weight:700;color:var(--gold);letter-spacing:0.5px;opacity:0.85;white-space:nowrap;">Order #</label>
+            <div style="position:relative;">
+              <input
+                type="text"
+                id="order-id-input"
+                inputmode="numeric"
+                maxlength="8"
+                placeholder="0001"
+                style="width:110px;text-align:right;font-size:13px;font-weight:700;color:var(--gold);padding:6px 10px;letter-spacing:1px;"
+              />
+              <div class="field-error" style="display:none;position:absolute;right:0;top:100%;white-space:nowrap;"></div>
+            </div>
           </div>
         </div>
         <div class="grid-2">

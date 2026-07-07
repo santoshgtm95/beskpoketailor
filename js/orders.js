@@ -15,6 +15,7 @@ const OrdersPage = (() => {
   let pickerSubs = [];
   let selectedCat = null; // { CategoryID, Name }
   let selectedSub = null; // { SubcatID, Name, Image, CategoryID }
+  let editingLineIdx = null;
 
   // Fabric inventory state (shared across all subcategory modals)
   let fabricCache = [];
@@ -84,6 +85,18 @@ const OrdersPage = (() => {
     document
       .getElementById("btn-save-order")
       .addEventListener("click", saveOrder);
+
+    // Zero-pad the Order ID to 0001 format when leaving the field
+    const orderIdInput = document.getElementById("order-id-input");
+    if (orderIdInput) {
+      orderIdInput.addEventListener("blur", () => {
+        const raw = orderIdInput.value.trim();
+        if (/^\d+$/.test(raw) && parseInt(raw, 10) > 0) {
+          orderIdInput.value = fmtOrderId(parseInt(raw, 10));
+          setOrderIdError("");
+        }
+      });
+    }
 
     // Clear / New order
     document
@@ -157,18 +170,41 @@ const OrdersPage = (() => {
   }
 
   async function refreshNextOrderId() {
-    const el = document.getElementById("order-number-value");
+    const el = document.getElementById("order-id-input");
     if (!el) return;
+    setOrderIdError("");
     if (editingOrderId) {
-      el.textContent = fmtOrderId(editingOrderId);
+      // Order ID cannot be changed while editing an existing order
+      el.value = fmtOrderId(editingOrderId);
+      el.disabled = true;
     } else {
+      el.disabled = false;
       try {
         const orders = await DB.orders.getAll();
         const maxId =
           orders.length > 0 ? Math.max(...orders.map((o) => o.OrderID)) : 0;
-        el.textContent = fmtOrderId(maxId + 1);
+        el.value = fmtOrderId(maxId + 1);
       } catch {
-        el.textContent = "----";
+        el.value = "";
+      }
+    }
+  }
+
+  function setOrderIdError(msg) {
+    const input = document.getElementById("order-id-input");
+    if (!input) return;
+    const errEl = input.parentElement.querySelector(".field-error");
+    if (msg) {
+      input.classList.add("input-error");
+      if (errEl) {
+        errEl.textContent = msg;
+        errEl.style.display = "block";
+      }
+    } else {
+      input.classList.remove("input-error");
+      if (errEl) {
+        errEl.textContent = "";
+        errEl.style.display = "none";
       }
     }
   }
@@ -375,6 +411,9 @@ const OrdersPage = (() => {
       document.getElementById("meas-chk-female").checked = false;
       document.getElementById("meas-chk-low-leg").checked = false;
       document.getElementById("meas-chk-left-lower").checked = false;
+      document.getElementById("meas-chk-closed-back").checked = false;
+      document.getElementById("meas-chk-center-pleat").checked = false;
+      document.getElementById("meas-chk-side-pleats").checked = false;
       document.getElementById("meas-qty").value = "1";
       document.getElementById("meas-color").value = "";
       document.getElementById("meas-unit-price").value = "";
@@ -508,11 +547,19 @@ const OrdersPage = (() => {
       LineTotal: +(qty * price).toFixed(2),
     };
 
-    orderLines.push(line);
+    const wasEditing = editingLineIdx !== null;
+    if (wasEditing) {
+      orderLines[editingLineIdx] = line;
+      editingLineIdx = null;
+    } else {
+      orderLines.push(line);
+    }
     renderOrderLines();
     updateOrderTotal();
 
-    Toast.success(`Added: ${selectedCat.Name} – ${selectedSub.Name}`);
+    Toast.success(
+      `${wasEditing ? "Updated" : "Added"}: ${selectedCat.Name} – ${selectedSub.Name}`,
+    );
 
     // Go back to category picker for next item
     showStep("cat");
@@ -611,11 +658,19 @@ const OrdersPage = (() => {
       TailorFees: tailorFees,
     };
 
-    orderLines.push(line);
+    const wasEditing = editingLineIdx !== null;
+    if (wasEditing) {
+      orderLines[editingLineIdx] = line;
+      editingLineIdx = null;
+    } else {
+      orderLines.push(line);
+    }
     renderOrderLines();
     updateOrderTotal();
 
-    Toast.success(`Added: ${selectedCat.Name} – ${selectedSub.Name}`);
+    Toast.success(
+      `${wasEditing ? "Updated" : "Added"}: ${selectedCat.Name} – ${selectedSub.Name}`,
+    );
 
     Modal.close("modal-meas-pant");
     showStep("cat");
@@ -736,11 +791,19 @@ const OrdersPage = (() => {
       TailorFees: tailorFees,
     };
 
-    orderLines.push(line);
+    const wasEditing = editingLineIdx !== null;
+    if (wasEditing) {
+      orderLines[editingLineIdx] = line;
+      editingLineIdx = null;
+    } else {
+      orderLines.push(line);
+    }
     renderOrderLines();
     updateOrderTotal();
 
-    Toast.success(`Added: ${selectedCat.Name} – ${selectedSub.Name}`);
+    Toast.success(
+      `${wasEditing ? "Updated" : "Added"}: ${selectedCat.Name} – ${selectedSub.Name}`,
+    );
 
     Modal.close("modal-meas-shirt");
     showStep("cat");
@@ -794,6 +857,11 @@ const OrdersPage = (() => {
     if (getChk("meas-chk-female")) chks.push("Ladies");
     if (getChk("meas-chk-low-leg")) chks.push("Low Leg");
     if (getChk("meas-chk-left-lower")) chks.push("Left Side Lower");
+    if (getChk("meas-chk-closed-back")) chks.push("หลังปิด (X) (Closed Back)");
+    if (getChk("meas-chk-center-pleat"))
+      chks.push("ผ่ากลาง (T) ① (Center Pleat)");
+    if (getChk("meas-chk-side-pleats"))
+      chks.push("ผ่าข้าง (TT) ② (Side Pleats)");
 
     const color = getVal("meas-color");
     const desc = getVal("meas-description");
@@ -831,11 +899,19 @@ const OrdersPage = (() => {
       TailorFees: tailorFees,
     };
 
-    orderLines.push(line);
+    const wasEditing = editingLineIdx !== null;
+    if (wasEditing) {
+      orderLines[editingLineIdx] = line;
+      editingLineIdx = null;
+    } else {
+      orderLines.push(line);
+    }
     renderOrderLines();
     updateOrderTotal();
 
-    Toast.success(`Added: ${selectedCat.Name} – ${selectedSub.Name}`);
+    Toast.success(
+      `${wasEditing ? "Updated" : "Added"}: ${selectedCat.Name} – ${selectedSub.Name}`,
+    );
 
     Modal.close("modal-measurements");
     showStep("cat");
@@ -868,6 +944,7 @@ const OrdersPage = (() => {
           <td class="text-right font-mono">${fmtCurrency(l.UnitPrice)}</td>
           <td class="text-right font-mono text-gold font-bold">${fmtCurrency(l.LineTotal)}</td>
           <td class="text-right">
+            <button class="btn btn-primary btn-sm btn-icon" onclick="OrdersPage.editLine(${idx})" title="Edit" style="margin-right:4px;">✏️</button>
             <button class="btn btn-danger btn-sm btn-icon" onclick="OrdersPage.removeLine(${idx})" title="Remove">✕</button>
           </td>
         </tr>`;
@@ -879,6 +956,270 @@ const OrdersPage = (() => {
     orderLines.splice(idx, 1);
     renderOrderLines();
     updateOrderTotal();
+  }
+
+  function parseCustomDesc(customDesc) {
+    const out = { description: "", color: "", meas: {}, traits: [] };
+    if (!customDesc) return out;
+    const segs = customDesc.split(" | ").slice(1);
+    for (const s of segs) {
+      if (s.startsWith("Color: ")) {
+        out.color = s.slice(7);
+      } else if (s.startsWith("Meas: ")) {
+        s.slice(6)
+          .split(",")
+          .map((p) => p.trim())
+          .filter(Boolean)
+          .forEach((p) => {
+            const i = p.indexOf(":");
+            if (i > 0) out.meas[p.slice(0, i).trim()] = p.slice(i + 1).trim();
+          });
+      } else if (s.startsWith("Traits: ")) {
+        out.traits = s
+          .slice(8)
+          .split(",")
+          .map((p) => p.trim())
+          .filter(Boolean);
+      } else if (s.startsWith("Fabric: ") || s.startsWith("Fabric Used: ")) {
+        // handled via line.FabricID
+      } else if (!out.description) {
+        out.description = s;
+      }
+    }
+    return out;
+  }
+
+  const JACKET_MEAS = {
+    Length: "meas-length",
+    Chest: "meas-chest",
+    Waist: "meas-waist",
+    Hips: "meas-hips",
+    Shoulder: "meas-shoulder",
+    Sleeves: "meas-sleeves",
+    Front: "meas-front",
+    Back: "meas-back",
+    Neck: "meas-neck",
+  };
+  const JACKET_TRAITS = {
+    "Sloping Shoulder": "meas-chk-sloping-shoulder",
+    "Hunched Back": "meas-chk-hunched-back",
+    Belly: "meas-chk-belly",
+    "Sway Back": "meas-chk-sway-back",
+    Gents: "meas-chk-male",
+    Ladies: "meas-chk-female",
+    "Low Leg": "meas-chk-low-leg",
+    "Left Side Lower": "meas-chk-left-lower",
+    "หลังปิด (X) (Closed Back)": "meas-chk-closed-back",
+    "ผ่ากลาง (T) ① (Center Pleat)": "meas-chk-center-pleat",
+    "ผ่าข้าง (TT) ② (Side Pleats)": "meas-chk-side-pleats",
+  };
+  const PANT_MEAS = {
+    Waist: "meas-pant-waist",
+    Hips: "meas-pant-hips",
+    Crotch: "meas-pant-crotch",
+    Thighs: "meas-pant-thighs",
+    Knee: "meas-pant-knee",
+    Bottom: "meas-pant-bottom",
+    Length: "meas-pant-length",
+    Shorts: "meas-pant-shorts",
+    Stomach: "meas-pant-stomach",
+    "Skirt Length": "meas-pant-skirt-length",
+  };
+  const PANT_TRAITS = {
+    "Flat Seat": "meas-pant-chk-flat-seat",
+    "Prominent Seat": "meas-pant-chk-prominent-seat",
+    "Front Low": "meas-pant-chk-front-low",
+    Gents: "meas-pant-chk-male",
+    Ladies: "meas-pant-chk-female",
+    "Prominent Front Thigh": "meas-pant-chk-front-thigh",
+  };
+  const SHIRT_MEAS = {
+    Length: "meas-shirt-length",
+    Chest: "meas-shirt-chest",
+    Waist: "meas-shirt-waist",
+    Hips: "meas-shirt-hips",
+    Shoulder: "meas-shirt-shoulder",
+    Sleeves: "meas-shirt-sleeves",
+    Neck: "meas-shirt-neck",
+    Cuffs: "meas-shirt-cuffs",
+    "Front Length": "meas-shirt-front-length",
+    "Back Length": "meas-shirt-back-length",
+    "Bust Height": "meas-shirt-bust-height",
+    "Bust Width": "meas-shirt-bust-width",
+    Front: "meas-shirt-front",
+    Back: "meas-shirt-back",
+    "Skirt Length": "meas-shirt-skirt-length",
+  };
+  const SHIRT_TRAITS = {
+    "ไหล่เท (Sloping Shoulders)": "meas-shirt-chk-sloping-shoulder",
+    "มีพุง (Protruding Belly / Stomach)": "meas-shirt-chk-belly",
+    "หลังค่อม (Hunched Back)": "meas-shirt-chk-hunched-back",
+    "Gents (ผู้ชาย)": "meas-shirt-chk-male",
+    "Ladies (ผู้หญิง)": "meas-shirt-chk-female",
+    "แหลม (F) (Point Collar)": "meas-shirt-chk-pointed",
+    "ป้าน (I) (Semi-Spread Collar)": "meas-shirt-chk-square",
+    "ป้าน (180) (Wide Spread Collar (180°))": "meas-shirt-chk-wide-square",
+    "คุมบนปก (Top Collar Stitching)": "meas-shirt-chk-collar-roll",
+    "คุมใต้ปก (Under Collar Stitching)": "meas-shirt-chk-lapel-gorge",
+    "คาร์ท (Back Pleat)": "meas-shirt-chk-back-pleat",
+    "หลังเรียบ (X) (Plain Back / No Pleat)": "meas-shirt-chk-plain-back",
+    "จีบกลาง (TT) (Center Pleat)": "meas-shirt-chk-center-pleat",
+    "จีบข้าง (TT) (Side Pleats)": "meas-shirt-chk-side-pleats",
+  };
+
+  function ensureFabricOption(selectId, line) {
+    const sel = document.getElementById(selectId);
+    if (!sel || !line.FabricID) return;
+    if (![...sel.options].some((o) => o.value === String(line.FabricID))) {
+      const fab = fabricCache.find((f) => f.FabricID === line.FabricID);
+      const label = fab
+        ? `${fab.Name}${fab.Code ? " - " + fab.Code : ""}  (Stock: ${fab.Count} ${fab.Unit || ""})`
+        : `Fabric #${line.FabricID}`;
+      const opt = document.createElement("option");
+      opt.value = String(line.FabricID);
+      opt.textContent = label;
+      sel.appendChild(opt);
+    }
+  }
+
+  function editLine(idx) {
+    const line = orderLines[idx];
+    if (!line) return;
+    editingLineIdx = idx;
+    selectedCat = { CategoryID: line.CategoryID, Name: line.CategoryName };
+    selectedSub = {
+      SubcatID: line.SubcatID,
+      Name: line.SubcatName,
+      Image: line.SubcatImage || "",
+      CategoryID: line.CategoryID,
+    };
+
+    const summary = document.getElementById("order-selected-summary");
+    if (summary) {
+      const imgHtml = line.SubcatImage
+        ? `<img src="${line.SubcatImage}" alt="${sanitize(line.SubcatName)}" class="picker-summary-img" />`
+        : `<span class="picker-summary-noimg">🧵</span>`;
+      summary.innerHTML = `
+        ${imgHtml}
+        <div>
+          <div class="picker-summary-cat">${sanitize(line.CategoryName)}</div>
+          <div class="picker-summary-sub">${sanitize(line.SubcatName)}</div>
+        </div>`;
+    }
+
+    const parsed = parseCustomDesc(line.CustomDesc);
+    const setVal = (id, v) => {
+      const el = document.getElementById(id);
+      if (el) el.value = v == null ? "" : v;
+    };
+    const setChk = (id, v) => {
+      const el = document.getElementById(id);
+      if (el) el.checked = !!v;
+    };
+
+    if (line.CategoryName === "Jacket & Vest") {
+      populateFabricDropdown("meas");
+      ensureFabricOption("meas-fabric", line);
+      document.getElementById("meas-cat-sub-name").textContent =
+        `${line.CategoryName} — ${line.SubcatName}`;
+      const wrap = document.getElementById("meas-sub-image-wrap");
+      wrap.innerHTML = line.SubcatImage
+        ? `<img src="${line.SubcatImage}" alt="${sanitize(line.SubcatName)}" style="width: 220px; height: 220px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border);" />`
+        : `<div style="display: flex; width: 220px; height: 220px; border-radius: 6px; background: linear-gradient(135deg, var(--gold-dark), var(--gold)); color: #fff; align-items: center; justify-content: center; font-size: 56px; font-weight: bold; border: 1px solid var(--border);">🧵</div>`;
+
+      Object.values(JACKET_TRAITS).forEach((id) => setChk(id, false));
+      Object.values(JACKET_MEAS).forEach((id) => setVal(id, ""));
+      setVal("meas-description", parsed.description);
+      setVal("meas-color", parsed.color);
+      for (const [k, v] of Object.entries(parsed.meas)) {
+        const id = JACKET_MEAS[k];
+        if (id) setVal(id, v);
+      }
+      for (const t of parsed.traits) {
+        const id = JACKET_TRAITS[t];
+        if (id) setChk(id, true);
+      }
+      setVal("meas-qty", line.Quantity);
+      setVal("meas-unit-price", line.UnitPrice);
+      setVal("meas-tailor-fees", line.TailorFees || "");
+      if (line.FabricID) {
+        setVal("meas-fabric", String(line.FabricID));
+        _pickFabric("meas");
+        setVal("meas-use-count", line.UseCount || "");
+      } else {
+        setVal("meas-fabric", "");
+      }
+      Modal.open("modal-measurements");
+    } else if (line.CategoryName === "Trousers & Skirt") {
+      populateFabricDropdown("meas-pant");
+      ensureFabricOption("meas-pant-fabric", line);
+      document.getElementById("meas-pant-cat-sub-name").textContent =
+        `${line.CategoryName} — ${line.SubcatName}`;
+      const wrap = document.getElementById("meas-pant-sub-image-wrap");
+      wrap.innerHTML = line.SubcatImage
+        ? `<img src="${line.SubcatImage}" alt="${sanitize(line.SubcatName)}" style="width: 220px; height: 220px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border);" />`
+        : `<div style="display: flex; width: 220px; height: 220px; border-radius: 6px; background: linear-gradient(135deg, var(--gold-dark), var(--gold)); color: #fff; align-items: center; justify-content: center; font-size: 56px; font-weight: bold; border: 1px solid var(--border);">🧵</div>`;
+
+      Object.values(PANT_TRAITS).forEach((id) => setChk(id, false));
+      Object.values(PANT_MEAS).forEach((id) => setVal(id, ""));
+      setVal("meas-pant-description", parsed.description);
+      setVal("meas-pant-color", parsed.color);
+      for (const [k, v] of Object.entries(parsed.meas)) {
+        const id = PANT_MEAS[k];
+        if (id) setVal(id, v);
+      }
+      for (const t of parsed.traits) {
+        const id = PANT_TRAITS[t];
+        if (id) setChk(id, true);
+      }
+      setVal("meas-pant-qty", line.Quantity);
+      setVal("meas-pant-unit-price", line.UnitPrice);
+      setVal("meas-pant-tailor-fees", line.TailorFees || "");
+      if (line.FabricID) {
+        setVal("meas-pant-fabric", String(line.FabricID));
+        _pickFabric("meas-pant");
+        setVal("meas-pant-use-count", line.UseCount || "");
+      } else {
+        setVal("meas-pant-fabric", "");
+      }
+      Modal.open("modal-meas-pant");
+    } else if (line.CategoryName === "Shirt & Dress") {
+      populateFabricDropdown("meas-shirt");
+      ensureFabricOption("meas-shirt-fabric", line);
+      document.getElementById("meas-shirt-cat-sub-name").textContent =
+        `${line.CategoryName} — ${line.SubcatName}`;
+      const wrap = document.getElementById("meas-shirt-sub-image-wrap");
+      wrap.innerHTML = line.SubcatImage
+        ? `<img src="${line.SubcatImage}" alt="${sanitize(line.SubcatName)}" style="width: 220px; height: 220px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border);" />`
+        : `<div style="display: flex; width: 220px; height: 220px; border-radius: 6px; background: linear-gradient(135deg, var(--gold-dark), var(--gold)); color: #fff; align-items: center; justify-content: center; font-size: 56px; font-weight: bold; border: 1px solid var(--border);">🧵</div>`;
+
+      Object.values(SHIRT_TRAITS).forEach((id) => setChk(id, false));
+      Object.values(SHIRT_MEAS).forEach((id) => setVal(id, ""));
+      setVal("meas-shirt-description", parsed.description);
+      setVal("meas-shirt-color", parsed.color);
+      for (const [k, v] of Object.entries(parsed.meas)) {
+        const id = SHIRT_MEAS[k];
+        if (id) setVal(id, v);
+      }
+      for (const t of parsed.traits) {
+        const id = SHIRT_TRAITS[t];
+        if (id) setChk(id, true);
+      }
+      setVal("meas-shirt-qty", line.Quantity);
+      setVal("meas-shirt-unit-price", line.UnitPrice);
+      setVal("meas-shirt-tailor-fees", line.TailorFees || "");
+      if (line.FabricID) {
+        setVal("meas-shirt-fabric", String(line.FabricID));
+        _pickFabric("meas-shirt");
+        setVal("meas-shirt-use-count", line.UseCount || "");
+      } else {
+        setVal("meas-shirt-fabric", "");
+      }
+      Modal.open("modal-meas-shirt");
+    } else {
+      Toast.warning("Editing this item type is not supported yet.");
+      editingLineIdx = null;
+    }
   }
 
   function updateOrderTotal() {
@@ -935,6 +1276,46 @@ const OrdersPage = (() => {
       return;
     }
 
+    // Validate the user-entered Order ID (new orders only)
+    let enteredOrderId = null;
+    if (!editingOrderId) {
+      const idInput = document.getElementById("order-id-input");
+      const idRaw = idInput.value.trim();
+      if (!idRaw) {
+        setOrderIdError("Order ID is required.");
+        Toast.warning("Please enter an Order ID.");
+        return;
+      }
+      if (!/^\d+$/.test(idRaw)) {
+        setOrderIdError("Order ID must contain digits only (e.g. 0033).");
+        Toast.warning("Order ID must contain digits only (e.g. 0033).");
+        return;
+      }
+      enteredOrderId = parseInt(idRaw, 10);
+      if (enteredOrderId <= 0) {
+        setOrderIdError("Order ID must be greater than 0000.");
+        Toast.warning("Order ID must be greater than 0000.");
+        return;
+      }
+      idInput.value = fmtOrderId(enteredOrderId);
+      try {
+        const existingOrders = await DB.orders.getAll();
+        if (existingOrders.some((o) => o.OrderID === enteredOrderId)) {
+          setOrderIdError(
+            `Order ${fmtOrderId(enteredOrderId)} already exists.`,
+          );
+          Toast.error(
+            `Order ID ${fmtOrderId(enteredOrderId)} already exists. Please use a different one.`,
+          );
+          return;
+        }
+      } catch (err) {
+        Toast.error("Could not verify Order ID: " + err.message);
+        return;
+      }
+      setOrderIdError("");
+    }
+
     const totalAmount = orderLines.reduce((s, l) => s + l.LineTotal, 0);
     const user = Auth.currentUser();
     const paymentMethod =
@@ -972,6 +1353,7 @@ const OrdersPage = (() => {
         orderId = editingOrderId;
       } else {
         orderId = await DB.orders.add({
+          OrderID: enteredOrderId,
           CustomerID: custId,
           UserID: user.UserID,
           OrderDate: orderDate,
@@ -1014,6 +1396,7 @@ const OrdersPage = (() => {
       resetOrderForm();
       if (typeof DashboardPage !== "undefined") DashboardPage.refresh();
     } catch (err) {
+      if (/already exists/i.test(err.message)) setOrderIdError(err.message);
       Toast.error("Failed to save order: " + err.message);
     }
   }
@@ -1470,11 +1853,16 @@ const OrdersPage = (() => {
       fmtCurrency(totalRev);
   }
 
+  let viewingOrder = null;
+  let viewingLines = [];
+
   async function viewOrder(orderId) {
     await loadFabricCache();
     const order = await DB.orders.get(orderId);
     const lines = await DB.orderlines.getByOrder(orderId);
     const cust = await DB.customers.get(order.CustomerID);
+    viewingOrder = order;
+    viewingLines = lines;
 
     let linesHtml = "";
     let total = 0;
@@ -1596,9 +1984,6 @@ const OrdersPage = (() => {
           <div style="font-size:15px;font-weight:bold;">REMAINING BALANCE</div>
           <div style="font-size:20px;font-weight:bold;color:var(--gold-light);">${fmtCurrency(remaining)}</div>
         </div>
-      </div>
-      <div class="flex gap-2 mt-3" style="justify-content: flex-end;">
-        <button class="btn btn-primary btn-sm" onclick="OrdersPage.editFromView(${orderId})">✏️ Edit Order</button>
       </div>`;
     Modal.open("modal-view-order");
   }
@@ -1606,6 +1991,351 @@ const OrdersPage = (() => {
   async function editFromView(orderId) {
     Modal.close("modal-view-order");
     await loadOrderForEdit(orderId);
+  }
+
+  async function editFromViewCurrent() {
+    if (!viewingOrder) return;
+    await editFromView(viewingOrder.OrderID);
+  }
+
+  const THAI = {
+    // Sections
+    Color: "สี",
+    Meas: "ขนาด",
+    Traits: "ลักษณะพิเศษ",
+    Fabric: "ผ้า",
+    Quantity: "จำนวน",
+    Date: "วันที่",
+    Description: "รายละเอียด",
+    // Jacket measurements
+    Length: "ยาว",
+    Chest: "อก",
+    Waist: "เอว",
+    Hips: "สะโพก",
+    Shoulder: "ไหล่",
+    Sleeves: "แขน",
+    Front: "บ่าหน้า",
+    Back: "บ่าหลัง",
+    Neck: "คอ",
+    // Pant measurements
+    Crotch: "เป้า",
+    Thighs: "โคนขา",
+    Knee: "เข่า",
+    Bottom: "ปลายขา",
+    Shorts: "ขาสั้น",
+    Stomach: "หน้าท้อง",
+    "Skirt Length": "กระโปรงยาว",
+    // Shirt measurements
+    Cuffs: "ข้อมือ",
+    "Front Length": "ยาวหน้า",
+    "Back Length": "ยาวหลัง",
+    "Bust Height": "อกสูง",
+    "Bust Width": "อกห่าง",
+    // Traits
+    "Sloping Shoulder": "ไหล่เท",
+    "Sloping Shoulders": "ไหล่เท",
+    "Hunched Back": "หลังค่อม",
+    Belly: "มีพุง",
+    "Protruding Belly": "มีพุง",
+    "Sway Back": "หลังแอ่น",
+    Swayback: "หลังแอ่น",
+    "Low Leg": "ขาต่ำ",
+    "Left Side Lower": "ซ้ายต่ำ",
+    "Right Shoulder Lower": "ขวาต่ำ",
+    "Left Shoulder Lower": "ซ้ายต่ำ",
+    "Flat Seat": "ก้นแบน",
+    "Prominent Seat": "ก้นงอน",
+    "Front Low": "หน้าต่ำ",
+    "Prominent Front Thigh": "มีหนาบา",
+    Gents: "ผู้ชาย",
+    Ladies: "ผู้หญิง",
+  };
+
+  function bilingual(label) {
+    const th = THAI[label];
+    return th ? `${th} (${label})` : label;
+  }
+
+  function bilingualizeSegment(seg) {
+    // Already bilingual (Thai chars mixed in) — leave alone
+    if (/[฀-๿]/.test(seg)) return seg;
+
+    const colonIdx = seg.indexOf(":");
+    if (colonIdx === -1) {
+      return bilingual(seg.trim());
+    }
+    const head = seg.slice(0, colonIdx).trim();
+    const body = seg.slice(colonIdx + 1).trim();
+
+    if (head === "Meas") {
+      const items = body
+        .split(",")
+        .map((p) => p.trim())
+        .filter(Boolean)
+        .map((p) => {
+          const idx = p.indexOf(":");
+          if (idx === -1) return p;
+          const k = p.slice(0, idx).trim();
+          const v = p.slice(idx + 1).trim();
+          return `${bilingual(k)}: ${v}`;
+        });
+      return `${items.join(", ")}`;
+    }
+
+    if (head === "Traits") {
+      const items = body
+        .split(",")
+        .map((p) => p.trim())
+        .filter(Boolean)
+        .map((p) => bilingual(p));
+      return `${bilingual("Traits")}: ${items.join(", ")}`;
+    }
+
+    return `${bilingual(head)}: ${body}`;
+  }
+
+  const TRAIT_CATALOG = {
+    1: [
+      "Sloping Shoulder",
+      "Hunched Back",
+      "Belly",
+      "Sway Back",
+      "Low Leg",
+      "Left Side Lower",
+      "หลังปิด (X) (Closed Back)",
+      "ผ่ากลาง (T) ① (Center Pleat)",
+      "ผ่าข้าง (TT) ② (Side Pleats)",
+    ],
+    2: ["Flat Seat", "Prominent Seat", "Front Low", "Prominent Front Thigh"],
+    3: [
+      "ไหล่เท (Sloping Shoulders)",
+      "มีพุง (Protruding Belly / Stomach)",
+      "หลังค่อม (Hunched Back)",
+      "แหลม (F) (Point Collar)",
+      "ป้าน (I) (Semi-Spread Collar)",
+      "ป้าน (180) (Wide Spread Collar (180°))",
+      "คุมบนปก (Top Collar Stitching)",
+      "คุมใต้ปก (Under Collar Stitching)",
+      "คาร์ท (Back Pleat)",
+      "หลังเรียบ (X) (Plain Back / No Pleat)",
+      "จีบกลาง (TT) (Center Pleat)",
+      "จีบข้าง (TT) (Side Pleats)",
+    ],
+  };
+
+  function printDescription() {
+    if (!viewingOrder || !viewingLines.length) {
+      Toast.warning("No order loaded.");
+      return;
+    }
+
+    const order = viewingOrder;
+    const stamp = order.CreatedAt || `${order.OrderDate}T00:00:00+07:00`;
+    const dt = new Date(stamp);
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Bangkok",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    })
+      .formatToParts(dt)
+      .reduce((acc, p) => ((acc[p.type] = p.value), acc), {});
+    const dateStr = `${parts.day}/${parts.month}/${parts.year} ${parts.hour}:${parts.minute}`;
+
+    const pageHtml = viewingLines
+      .map((l) => {
+        const raw = l.Description || l.CustomDesc || "—";
+        const allSegs = raw.split(" | ").filter((p) => {
+          return !p.startsWith("Fabric: ") && !p.startsWith("Fabric Used: ");
+        });
+        const title = sanitize(allSegs[0] || "—");
+
+        const traitsSeg = allSegs.slice(1).find((p) => p.startsWith("Traits:"));
+        const measSeg = allSegs.slice(1).find((p) => p.startsWith("Meas:"));
+        const otherSegs = allSegs
+          .slice(1)
+          .filter((p) => !p.startsWith("Traits:") && !p.startsWith("Meas:"));
+
+        const detailsList = otherSegs.length
+          ? `<ul>${otherSegs
+              .map((p) => `<li>${sanitize(bilingualizeSegment(p))}</li>`)
+              .join("")}</ul>`
+          : "";
+
+        let measHtml = "";
+        if (measSeg) {
+          const body = measSeg.slice("Meas:".length).trim();
+          const items = body
+            .split(",")
+            .map((p) => p.trim())
+            .filter(Boolean)
+            .map((p) => {
+              const idx = p.indexOf(":");
+              if (idx === -1) return { k: p, v: "" };
+              return {
+                k: p.slice(0, idx).trim(),
+                v: p.slice(idx + 1).trim(),
+              };
+            });
+          measHtml = `<div class="meas">
+            <div class="meas-label">${sanitize(bilingual("Meas"))}</div>
+            <div class="meas-grid">${items
+              .map(
+                (it) =>
+                  `<div class="meas-item"><span class="meas-k">${sanitize(bilingual(it.k))}</span><span class="meas-v">${sanitize(it.v)}</span></div>`,
+              )
+              .join("")}</div>
+          </div>`;
+        }
+
+        const checkedTraits = traitsSeg
+          ? traitsSeg
+              .slice("Traits:".length)
+              .split(",")
+              .map((p) => p.trim())
+              .filter(Boolean)
+          : [];
+        const checkedSet = new Set(checkedTraits);
+
+        const catalog = TRAIT_CATALOG[l.CategoryID] || [];
+        // Preserve any checked items not in the catalog (backwards-compat)
+        const extras = checkedTraits.filter(
+          (t) =>
+            !catalog.includes(t) &&
+            t !== "Gents" &&
+            t !== "Ladies" &&
+            t !== "Gents (ผู้ชาย)" &&
+            t !== "Ladies (ผู้หญิง)",
+        );
+        const fullList = [...catalog, ...extras];
+
+        let genderHtml = "";
+        const genders = [
+          "Gents",
+          "Ladies",
+          "Gents (ผู้ชาย)",
+          "Ladies (ผู้หญิง)",
+        ];
+        const genderChecked = checkedTraits.find((t) => genders.includes(t));
+        if (genderChecked || l.CategoryID) {
+          const gentsChecked =
+            genderChecked === "Gents" || genderChecked === "Gents (ผู้ชาย)";
+          const ladiesChecked =
+            genderChecked === "Ladies" || genderChecked === "Ladies (ผู้หญิง)";
+          genderHtml = `<div class="gender-row">
+            <span class="lbl">Gender — เพศ</span>
+            <span class="gender-opt"><span class="chk">${gentsChecked ? "☑" : "☐"}</span>${sanitize(bilingual("Gents"))}</span>
+            <span class="gender-opt"><span class="chk">${ladiesChecked ? "☑" : "☐"}</span>${sanitize(bilingual("Ladies"))}</span>
+          </div>`;
+        }
+
+        let traitsHtml = "";
+        if (fullList.length) {
+          traitsHtml = `<div class="traits">
+            <div class="traits-label">${sanitize(bilingual("Traits"))}</div>
+            ${genderHtml}
+            <div class="traits-grid">${fullList
+              .map((t) => {
+                const isChecked = checkedSet.has(t);
+                return `<div class="trait-item"><span class="chk">${isChecked ? "☑" : "☐"}</span><span>${sanitize(bilingual(t))}</span></div>`;
+              })
+              .join("")}</div>
+          </div>`;
+        } else if (genderHtml) {
+          traitsHtml = `<div class="traits">
+            <div class="traits-label">${sanitize(bilingual("Traits"))}</div>
+            ${genderHtml}
+          </div>`;
+        }
+
+        let fabricLine = "";
+        if (l.FabricID) {
+          const fab = fabricCache.find((f) => f.FabricID === l.FabricID);
+          const fabName = fab ? fab.Name : "Unknown";
+          const fabCode = fab && fab.Code ? ` (${fab.Code})` : "";
+          const used =
+            l.UseCount && l.UseCount > 0
+              ? ` — Used: ${l.UseCount} ${sanitize(l.FabricUnit || "")}`
+              : "";
+          fabricLine = `<div class="row"><span class="lbl">${bilingual("Fabric")}</span><span class="val">${sanitize(fabName)}${sanitize(fabCode)}${used}</span></div>`;
+        }
+
+        return `<section class="page">
+          <div class="header">
+            <div class="brand">SIAM BESPOKE</div>
+            <div class="order-id">Order ${fmtOrderId(order.OrderID)}</div>
+          </div>
+          <h1 class="title">${title}</h1>
+          ${detailsList ? `<div class="details">${detailsList}</div>` : ""}
+          ${measHtml}
+          ${traitsHtml}
+          <div class="meta">
+            ${fabricLine}
+            <div class="row"><span class="lbl">${bilingual("Quantity")}</span><span class="val">${l.Quantity}</span></div>
+            <div class="row"><span class="lbl">${bilingual("Date")}</span><span class="val">${dateStr}</span></div>
+          </div>
+        </section>`;
+      })
+      .join("");
+
+    const html = `<!DOCTYPE html><html><head>
+    <title>Order ${fmtOrderId(order.OrderID)} — Descriptions</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      @page { size: A4; margin: 0; }
+      * { box-sizing: border-box; }
+      body { font-family: 'Inter', 'Noto Sans Thai', sans-serif; color: #111; margin: 0; -webkit-print-color-adjust: exact; }
+      .page { width: 210mm; min-height: 297mm; padding: 25mm 22mm; page-break-after: always; display: flex; flex-direction: column; }
+      .page:last-child { page-break-after: auto; }
+      .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #111; padding-bottom: 14px; margin-bottom: 40px; }
+      .brand { font-size: 20px; font-weight: 800; letter-spacing: 2px; }
+      .order-id { font-size: 13px; color: #666; text-transform: uppercase; letter-spacing: 1.5px; }
+      .title { font-size: 34px; font-weight: 800; margin: 0 0 24px 0; line-height: 1.2; color: #111; }
+      .details ul { margin: 0 0 32px 0; padding-left: 22px; color: #333; font-size: 16px; line-height: 1.9; }
+      .details li { margin-bottom: 6px; }
+      .meas { margin: 0 0 32px 0; }
+      .meas-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #888; font-weight: 700; margin-bottom: 12px; }
+      .meas-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 32px; }
+      .meas-item { display: flex; align-items: baseline; gap: 12px; font-size: 15px; color: #111; }
+      .meas-k { flex: 1; font-weight: 500; color: #333; }
+      .meas-v { min-width: 70px; font-weight: 700; text-align: right; border-bottom: 2px solid #111; padding: 0 4px 2px 4px; letter-spacing: 0.5px; }
+      .traits { margin: 0 0 32px 0; }
+      .traits-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #888; font-weight: 700; margin-bottom: 12px; }
+      .traits-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 24px; }
+      .trait-item { display: flex; align-items: center; gap: 10px; font-size: 15px; color: #111; font-weight: 500; }
+      .trait-item .chk { font-size: 20px; color: #111; line-height: 1; }
+      .gender-row { display: flex; align-items: center; gap: 24px; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px dashed #ddd; font-size: 15px; }
+      .gender-row .lbl { flex: 0 0 auto !important; text-transform: uppercase; letter-spacing: 1px; color: #888; font-weight: 700; font-size: 11px; }
+      .gender-opt { display: inline-flex; align-items: center; gap: 8px; color: #111; font-weight: 500; }
+      .gender-opt .chk { font-size: 20px; line-height: 1; }
+      .meta { margin-top: auto; border-top: 1px solid #ddd; padding-top: 20px; }
+      .row { display: flex; padding: 10px 0; border-bottom: 1px solid #f0f0f0; font-size: 15px; }
+      .row:last-child { border-bottom: none; }
+      .lbl { flex: 0 0 200px; font-size: 11px; letter-spacing: 1px; color: #888; font-weight: 600; padding-top: 2px; text-transform: uppercase; }
+      .val { flex: 1; color: #111; font-weight: 600; }
+    </style>
+    </head><body>${pageHtml}</body></html>`;
+
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    document.body.appendChild(iframe);
+    iframe.contentWindow.document.open();
+    iframe.contentWindow.document.write(html);
+    iframe.contentWindow.document.close();
+
+    setTimeout(() => {
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+      setTimeout(() => document.body.removeChild(iframe), 2000);
+    }, 300);
   }
 
   async function deleteOrder(orderId) {
@@ -1633,10 +2363,13 @@ const OrdersPage = (() => {
     populateCategories,
     loadHistory,
     removeLine,
+    editLine,
     viewOrder,
     editFromView,
+    editFromViewCurrent,
     deleteOrder,
     printReceipt,
+    printDescription,
     addLineItemFromModal,
     addLineItemFromPantModal,
     addLineItemFromShirtModal,

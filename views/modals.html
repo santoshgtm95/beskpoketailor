@@ -118,7 +118,7 @@
 
 <!-- Edit Customer (Customers Page) -->
 <div class="modal-overlay" id="modal-edit-customer">
-  <div class="modal modal-sm">
+  <div class="modal modal-custmore">
     <div class="modal-header">
       <h3 id="customer-modal-title">Customer</h3>
       <button
@@ -227,6 +227,16 @@
     </div>
     <div class="modal-body" id="view-order-content">Loading…</div>
     <div class="modal-footer">
+      <button
+        class="btn btn-primary"
+        onclick="OrdersPage.editFromViewCurrent()"
+      >
+        ✏️ Edit Order
+      </button>
+      <button class="btn btn-primary" onclick="OrdersPage.printDescription()">
+        🖨 Print Description
+      </button>
+
       <button class="btn btn-ghost" onclick="Modal.close('modal-view-order')">
         Close
       </button>
@@ -668,6 +678,60 @@
                       "
                     ></span
                   ></span>
+                </label>
+                <label
+                  style="
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 6px;
+                    font-size: 13px;
+                    color: #fff;
+                    cursor: pointer;
+                    line-height: 1.2;
+                  "
+                >
+                  <input
+                    type="checkbox"
+                    id="meas-chk-closed-back"
+                    style="width: auto; margin-top: 2px"
+                  />
+                  <span>หลังปิด (X) (Closed Back)</span>
+                </label>
+                <label
+                  style="
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 6px;
+                    font-size: 13px;
+                    color: #fff;
+                    cursor: pointer;
+                    line-height: 1.2;
+                  "
+                >
+                  <input
+                    type="checkbox"
+                    id="meas-chk-center-pleat"
+                    style="width: auto; margin-top: 2px"
+                  />
+                  <span>ผ่ากลาง (T) ① (Center Pleat)</span>
+                </label>
+                <label
+                  style="
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 6px;
+                    font-size: 13px;
+                    color: #fff;
+                    cursor: pointer;
+                    line-height: 1.2;
+                  "
+                >
+                  <input
+                    type="checkbox"
+                    id="meas-chk-side-pleats"
+                    style="width: auto; margin-top: 2px"
+                  />
+                  <span>ผ่าข้าง (TT) ② (Side Pleats)</span>
                 </label>
               </div>
             </div>

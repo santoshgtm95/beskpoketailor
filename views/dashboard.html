@@ -1,5 +1,4 @@
 <div class="page active" id="page-dashboard">
-
   <!-- Greeting -->
   <div class="dash-header">
     <div>
@@ -7,7 +6,11 @@
       <p class="dash-subtext" id="dashboard-date"></p>
     </div>
     <div class="dash-header-actions">
-      <select id="dash-period" class="dash-period-select" onchange="DashboardPage.refresh()">
+      <select
+        id="dash-period"
+        class="dash-period-select"
+        onchange="DashboardPage.refresh()"
+      >
         <option value="7">Last 7 Days</option>
         <option value="30" selected>Last 30 Days</option>
         <option value="90">Last 3 Months</option>
@@ -66,29 +69,51 @@
         <div class="kpi-delta" id="kpi-inventory-delta"></div>
       </div>
     </div>
+    <div class="kpi-card kpi-gold">
+      <div class="kpi-icon">🧵</div>
+      <div class="kpi-body">
+        <div class="kpi-value" id="stat-fabric-sales">THB 0.00</div>
+        <div class="kpi-label">Fabric Sales</div>
+        <div class="kpi-delta" id="kpi-fabric-sales-count"></div>
+      </div>
+    </div>
+    <div class="kpi-card kpi-blue">
+      <div class="kpi-icon">👔</div>
+      <div class="kpi-body">
+        <div class="kpi-value" id="stat-ready-made-sales">THB 0.00</div>
+        <div class="kpi-label">Ready Made Sales</div>
+        <div class="kpi-delta" id="kpi-ready-made-count"></div>
+      </div>
+    </div>
   </div>
 
   <!-- Charts Row 1 -->
-  <div class="dash-grid-3-1" style="gap:20px; margin-bottom:20px;">
+  <div class="dash-grid-3-1" style="gap: 20px; margin-bottom: 20px">
     <!-- Revenue + Orders Bar Chart -->
     <div class="card">
       <div class="card-header">
-        <div class="card-title"><span class="title-icon">📈</span> Revenue & Orders Over Time</div>
+        <div class="card-title">
+          <span class="title-icon">📈</span> Revenue & Sales Over Time
+        </div>
         <div class="dash-legend">
-          <span class="legend-dot" style="background:var(--gold)"></span><span class="text-muted">Revenue</span>
-          <span class="legend-dot" style="background:var(--accent-blue)"></span><span class="text-muted">Orders</span>
+          <span class="legend-dot" style="background: var(--gold)"></span
+          ><span class="text-muted">Revenue</span>
+          <span class="legend-dot" style="background: var(--accent-blue)"></span
+          ><span class="text-muted">Transactions</span>
         </div>
       </div>
-      <div class="chart-container" style="height:240px;">
+      <div class="chart-container" style="height: 240px">
         <canvas id="chart-revenue-orders"></canvas>
       </div>
     </div>
     <!-- Net Profit Donut -->
     <div class="card">
       <div class="card-header">
-        <div class="card-title"><span class="title-icon">📊</span> Revenue vs Expenses</div>
+        <div class="card-title">
+          <span class="title-icon">📊</span> Revenue vs Expenses
+        </div>
       </div>
-      <div class="chart-container" style="height:200px;">
+      <div class="chart-container" style="height: 200px">
         <canvas id="chart-profit-donut"></canvas>
       </div>
       <div id="profit-summary" class="profit-summary"></div>
@@ -96,61 +121,64 @@
   </div>
 
   <!-- Charts Row 2 -->
-  <div class="dash-grid-2" style="gap:20px; margin-bottom:20px;">
+  <div class="dash-grid-2" style="gap: 20px; margin-bottom: 20px">
     <!-- Expenses by category bar -->
     <div class="card">
       <div class="card-header">
-        <div class="card-title"><span class="title-icon">💸</span> Expenses Breakdown</div>
+        <div class="card-title">
+          <span class="title-icon">💸</span> Expenses Breakdown
+        </div>
       </div>
-      <div class="chart-container" style="height:220px;">
+      <div class="chart-container" style="height: 220px">
         <canvas id="chart-expenses-bar"></canvas>
       </div>
     </div>
-    <!-- Top Items bar -->
+    <!-- Recent Expenses -->
     <div class="card">
       <div class="card-header">
-        <div class="card-title"><span class="title-icon">🏆</span> Top Ordered Items</div>
-      </div>
-      <div class="chart-container" style="height:220px;">
-        <canvas id="chart-top-items"></canvas>
-      </div>
-    </div>
-  </div>
-
-  <!-- Charts Row 3 -->
-  <div class="dash-grid-2" style="gap:20px; margin-bottom:20px;">
-    <!-- Inventory: available vs used -->
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title"><span class="title-icon">🧶</span> Fabric Inventory (Top 8)</div>
-        <div class="dash-legend">
-          <span class="legend-dot" style="background:var(--accent-green)"></span><span class="text-muted">Available</span>
-          <span class="legend-dot" style="background:var(--accent-amber)"></span><span class="text-muted">Used</span>
+        <div class="card-title">
+          <span class="title-icon">💸</span> Recent Expenses
         </div>
+        <button
+          class="btn btn-ghost btn-sm"
+          onclick="AppShell.navigate('expenses')"
+        >
+          View All →
+        </button>
       </div>
-      <div class="chart-container" style="height:220px;">
-        <canvas id="chart-inventory"></canvas>
+      <div class="order-table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Name</th>
+              <th class="text-right">Amount</th>
+            </tr>
+          </thead>
+          <tbody id="recent-expenses-tbody">
+            <tr>
+              <td colspan="3" class="table-empty">Loading…</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-    </div>
-    <!-- Order status distribution -->
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title"><span class="title-icon">📋</span> Order Status Distribution</div>
-      </div>
-      <div class="chart-container" style="height:200px;">
-        <canvas id="chart-order-status"></canvas>
-      </div>
-      <div id="order-status-legend" class="status-legend-row"></div>
     </div>
   </div>
 
   <!-- Bottom Row: Recent Orders + Quick Actions -->
-  <div class="grid-2" style="gap:20px; margin-bottom:20px;">
+  <div class="grid-2" style="gap: 20px; margin-bottom: 20px">
     <!-- Recent Orders -->
     <div class="card">
       <div class="card-header">
-        <div class="card-title"><span class="title-icon">🕐</span> Recent Orders</div>
-        <button class="btn btn-ghost btn-sm" onclick="AppShell.navigate('order-history')">View All →</button>
+        <div class="card-title">
+          <span class="title-icon">🕐</span> Recent Orders
+        </div>
+        <button
+          class="btn btn-ghost btn-sm"
+          onclick="AppShell.navigate('order-history')"
+        >
+          View All →
+        </button>
       </div>
       <div class="order-table-wrap">
         <table class="data-table">
@@ -164,44 +192,44 @@
             </tr>
           </thead>
           <tbody id="recent-orders-tbody">
-            <tr><td colspan="5" class="table-empty">Loading…</td></tr>
+            <tr>
+              <td colspan="5" class="table-empty">Loading…</td>
+            </tr>
           </tbody>
         </table>
       </div>
     </div>
 
     <!-- Right column: quick stats + quick actions -->
-    <div style="display:flex;flex-direction:column;gap:16px;">
-      <!-- Recent Expenses -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title"><span class="title-icon">💸</span> Recent Expenses</div>
-          <button class="btn btn-ghost btn-sm" onclick="AppShell.navigate('expenses')">View All →</button>
-        </div>
-        <div class="order-table-wrap">
-          <table class="data-table">
-            <thead>
-              <tr><th>Date</th><th>Name</th><th class="text-right">Amount</th></tr>
-            </thead>
-            <tbody id="recent-expenses-tbody">
-              <tr><td colspan="3" class="table-empty">Loading…</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+    <div style="display: flex; flex-direction: column; gap: 16px">
       <!-- Quick Actions -->
       <div class="card">
-        <div class="card-header" style="margin-bottom:12px">
-          <div class="card-title"><span class="title-icon">⚡</span> Quick Actions</div>
+        <div class="card-header" style="margin-bottom: 12px">
+          <div class="card-title">
+            <span class="title-icon">⚡</span> Quick Actions
+          </div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <button class="btn btn-gold btn-full" id="quick-new-order">✂️ Create New Order</button>
-          <button class="btn btn-ghost btn-full" id="quick-new-customer">➕ Add Customer</button>
-          <button class="btn btn-ghost btn-full" onclick="AppShell.navigate('expenses')">💰 Log Expense</button>
-          <button class="btn btn-ghost btn-full" onclick="AppShell.navigate('inventory')">🧶 View Inventory</button>
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <button class="btn btn-gold btn-full" id="quick-new-order">
+            ✂️ Create New Order
+          </button>
+          <button class="btn btn-ghost btn-full" id="quick-new-customer">
+            ➕ Add Customer
+          </button>
+          <button
+            class="btn btn-ghost btn-full"
+            onclick="AppShell.navigate('expenses')"
+          >
+            💰 Log Expense
+          </button>
+          <button
+            class="btn btn-ghost btn-full"
+            onclick="AppShell.navigate('inventory')"
+          >
+            🧶 View Inventory
+          </button>
         </div>
       </div>
     </div>
   </div>
-
 </div>

@@ -940,6 +940,7 @@ app.get("/api/orders/:id", async (req, res) => {
 
 app.post("/api/orders", async (req, res) => {
   const {
+    OrderID,
     CustomerID,
     UserID,
     OrderDate,
@@ -956,11 +957,29 @@ app.post("/api/orders", async (req, res) => {
       message: "CustomerID, UserID, OrderDate, and TotalAmount are required",
     });
   }
+  if (OrderID != null && (!Number.isInteger(OrderID) || OrderID <= 0)) {
+    return res.status(400).json({
+      message: "OrderID must be a positive whole number",
+    });
+  }
   try {
+    if (OrderID != null) {
+      const existing = await dbGet(
+        "SELECT OrderID FROM orders WHERE OrderID = ?",
+        [OrderID],
+      );
+      if (existing) {
+        return res.status(409).json({
+          message: `Order ID ${OrderID} already exists`,
+        });
+      }
+    }
+
     const createdAt = CreatedAt || bangkokNowIso();
     const result = await dbRun(
-      "INSERT INTO orders (CustomerID, UserID, OrderDate, CreatedAt, TotalAmount, PaymentMethod, Deposit, Discount, RemainingBalance, TransactionFee) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO orders (OrderID, CustomerID, UserID, OrderDate, CreatedAt, TotalAmount, PaymentMethod, Deposit, Discount, RemainingBalance, TransactionFee) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       [
+        OrderID != null ? OrderID : null,
         CustomerID,
         UserID,
         OrderDate,
@@ -973,8 +992,13 @@ app.post("/api/orders", async (req, res) => {
         TransactionFee || 0,
       ],
     );
-    res.status(201).json(result.id);
+    res.status(201).json(OrderID != null ? OrderID : result.id);
   } catch (err) {
+    if (/UNIQUE constraint failed: orders\.OrderID/.test(err.message)) {
+      return res.status(409).json({
+        message: `Order ID ${OrderID} already exists`,
+      });
+    }
     res.status(500).json({ message: err.message });
   }
 });
@@ -1681,6 +1705,20 @@ app.post("/api/ready-made-sales", async (req, res) => {
     `, [ProductID, SaleDate, Quantity, SellingPrice, TotalAmount, now]);
 
     res.status(201).json(result.id);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.delete("/api/ready-made-sales/:id", async (req, res) => {
+  try {
+    const sale = await dbGet("SELECT ProductID, Quantity FROM ready_made_sales WHERE SaleID = ?", [req.params.id]);
+    if (!sale) return res.status(404).json({ message: "Sale not found" });
+
+    const now = bangkokNowIso();
+    await dbRun("UPDATE ready_made_products SET Count = Count + ?, UpdatedAt = ? WHERE ProductID = ?", [sale.Quantity, now, sale.ProductID]);
+    await dbRun("DELETE FROM ready_made_sales WHERE SaleID = ?", [req.params.id]);
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

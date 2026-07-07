@@ -1,90 +1,108 @@
 <div class="page" id="page-sell-fabric">
-  <div class="grid-2" style="gap: 20px;">
+  <div>
     <!-- Sell Fabric Form Card -->
     <div class="card">
-      <div class="card-header" style="margin-bottom: 16px;">
+      <div class="card-header" style="margin-bottom: 16px">
         <div class="card-title">💲 Sell Fabric from Inventory</div>
       </div>
       <form id="sell-fabric-form" novalidate>
-        <div class="form-group">
-          <label>Date <span class="required">*</span></label>
-          <input type="date" id="sell-date" />
-          <div class="field-error" style="display: none;"></div>
-        </div>
+        <div class="grid-2" style="gap: 12px">
+          <div class="form-group">
+            <label>Date <span class="required">*</span></label>
+            <input type="date" id="sell-date" />
+            <div class="field-error" style="display: none"></div>
+          </div>
 
-        <div class="form-group">
-          <label>Select Fabric <span class="required">*</span></label>
-          <select id="sell-fabric-select" onchange="SellFabricPage.onFabricChange()">
-            <option value="">-- Choose Fabric --</option>
-          </select>
-          <div class="field-error" style="display: none;"></div>
+          <div class="form-group">
+            <label>Select Fabric <span class="required">*</span></label>
+            <select
+              id="sell-fabric-select"
+              onchange="SellFabricPage.onFabricChange()"
+            >
+              <option value="">-- Choose Fabric --</option>
+            </select>
+            <div class="field-error" style="display: none"></div>
+          </div>
         </div>
-
-        <div class="grid-2" style="gap: 12px;">
+        <div class="grid-2" style="gap: 12px">
           <div class="form-group">
             <label>Cost / Unit Price (THB)</label>
-            <input type="number" id="sell-unit-price" step="0.01" readonly style="background-color: var(--bg-input); color: var(--text-muted);" />
+            <input
+              type="number"
+              id="sell-unit-price"
+              step="0.01"
+              readonly
+              style="
+                background-color: var(--bg-input);
+                color: var(--text-muted);
+              "
+            />
           </div>
           <div class="form-group">
-            <label>Selling Price / Unit (THB) <span class="required">*</span></label>
-            <input type="number" id="sell-price-input" step="0.01" oninput="SellFabricPage.calcTotal()" />
-            <div class="field-error" style="display: none;"></div>
+            <label
+              >Selling Price / Unit (THB) <span class="required">*</span></label
+            >
+            <input
+              type="number"
+              id="sell-price-input"
+              step="0.01"
+              oninput="SellFabricPage.calcTotal()"
+            />
+            <div class="field-error" style="display: none"></div>
           </div>
         </div>
 
-        <div class="grid-2" style="gap: 12px;">
+        <div class="grid-2" style="gap: 12px">
           <div class="form-group">
             <label>Selling Count (Qty) <span class="required">*</span></label>
-            <input type="number" id="sell-qty" step="0.01" oninput="SellFabricPage.calcTotal()" placeholder="e.g. 5.5" />
-            <div class="field-error" style="display: none;"></div>
+            <input
+              type="number"
+              id="sell-qty"
+              step="0.01"
+              oninput="SellFabricPage.calcTotal()"
+              placeholder="e.g. 5.5"
+            />
+            <div class="field-error" style="display: none"></div>
           </div>
           <div class="form-group">
             <label>Total Amount (THB)</label>
-            <input type="number" id="sell-total" step="0.01" readonly style="background-color: var(--bg-input); font-weight: bold; color: var(--text-gold);" />
+            <input
+              type="number"
+              id="sell-total"
+              step="0.01"
+              readonly
+              style="
+                background-color: var(--bg-input);
+                font-weight: bold;
+                color: var(--text-gold);
+              "
+            />
           </div>
         </div>
 
-        <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
+        <div style="margin-top: 16px; display: flex; justify-content: flex-end">
           <button type="button" class="btn btn-gold" id="btn-save-sell-fabric">
             💸 Record Fabric Sale
           </button>
         </div>
       </form>
     </div>
-
-    <!-- Quick Info / Help Card -->
-    <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
-      <div>
-        <div class="card-header" style="margin-bottom: 12px;">
-          <div class="card-title">ℹ️ Direct Fabric Sales</div>
-        </div>
-        <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.6; margin-bottom: 12px;">
-          This screen allows you to sell fabrics directly from your inventory.
-        </p>
-        <ul style="color: var(--text-muted); font-size: 13px; padding-left: 18px; line-height: 1.8;">
-          <li>Select the fabric you wish to sell from the dropdown.</li>
-          <li>The system automatically displays the remaining count/yardage.</li>
-          <li>Specify the selling quantity. The total is calculated in real time.</li>
-          <li>Upon confirmation, the selected fabric's stock count is decremented automatically.</li>
-        </ul>
-      </div>
-      
-      <div style="border-top: 1px solid var(--border); padding-top: 14px; margin-top: 14px;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span class="text-muted" style="font-size: 13px;">Total Sales (Filtered):</span>
-          <span id="fabric-sales-sum" style="font-size: 18px; font-weight: bold; color: var(--gold-light);">THB 0.00</span>
-        </div>
-      </div>
-    </div>
   </div>
 
   <!-- Fabric Sell History Card -->
-  <div class="card" style="margin-top: 20px;">
-    <div class="card-header" style="margin-bottom: 16px;">
+  <div class="card" style="margin-top: 20px">
+    <div class="card-header" style="margin-bottom: 16px">
       <div class="card-title">📜 Fabric Sell History</div>
-      <div class="search-input-wrap" style="max-width: 280px; margin-left: auto;">
+      <div
+        class="search-input-wrap"
+        style="max-width: 280px; margin-left: auto"
+      >
         <span class="search-icon">🔍</span>
-        <input type="text" id="fabric-sales-search" placeholder="Search sales history…" />
+        <input
+          type="text"
+          id="fabric-sales-search"
+          placeholder="Search sales history…"
+        />
       </div>
     </div>
     <div class="order-table-wrap">

@@ -18,7 +18,7 @@ const SellFabricPage = (() => {
     document.getElementById("sell-total").value = "";
 
     await Promise.all([fetchFabrics(), fetchSalesHistory()]);
-    
+
     // Bind search handler
     document.getElementById("fabric-sales-search").oninput = renderHistory;
   }
@@ -27,7 +27,7 @@ const SellFabricPage = (() => {
     try {
       allFabrics = await DB.inventory.getAll();
       const select = document.getElementById("sell-fabric-select");
-      
+
       // Preserve choice or clear
       select.innerHTML = '<option value="">-- Choose Fabric --</option>';
       allFabrics.forEach((f) => {
@@ -56,12 +56,13 @@ const SellFabricPage = (() => {
   function onFabricChange() {
     const select = document.getElementById("sell-fabric-select");
     const option = select.options[select.selectedIndex];
-    
+
     if (option && option.value) {
       const price = option.dataset.price;
       document.getElementById("sell-unit-price").value = price;
       document.getElementById("sell-price-input").value = price;
-      document.getElementById("sell-qty").placeholder = `Available: ${Number(option.dataset.count).toFixed(2)}`;
+      document.getElementById("sell-qty").placeholder =
+        `Available: ${Number(option.dataset.count).toFixed(2)}`;
     } else {
       document.getElementById("sell-unit-price").value = "";
       document.getElementById("sell-price-input").value = "";
@@ -72,13 +73,16 @@ const SellFabricPage = (() => {
 
   function calcTotal() {
     const qty = parseFloat(document.getElementById("sell-qty").value) || 0;
-    const price = parseFloat(document.getElementById("sell-price-input").value) || 0;
+    const price =
+      parseFloat(document.getElementById("sell-price-input").value) || 0;
     const total = qty * price;
     document.getElementById("sell-total").value = total ? total.toFixed(2) : "";
   }
 
   function renderHistory() {
-    const q = (document.getElementById("fabric-sales-search").value || "").toLowerCase();
+    const q = (
+      document.getElementById("fabric-sales-search").value || ""
+    ).toLowerCase();
     const filtered = allSales.filter((s) => {
       return (
         s.FabricName.toLowerCase().includes(q) ||
@@ -93,11 +97,10 @@ const SellFabricPage = (() => {
 
     const total = filtered.length;
     const totalSum = filtered.reduce((acc, s) => acc + (s.TotalAmount || 0), 0);
-    document.getElementById("fabric-sales-sum").textContent = fmtCurrency(totalSum);
 
     const paged = filtered.slice(
       (currentPage - 1) * PER_PAGE,
-      currentPage * PER_PAGE
+      currentPage * PER_PAGE,
     );
 
     const tbody = document.getElementById("fabric-sales-tbody");
@@ -115,7 +118,7 @@ const SellFabricPage = (() => {
           <td class="text-right font-mono">${fmtCurrency(s.UnitPrice)}</td>
           <td class="text-right font-mono">${fmtCurrency(s.SellingPrice)}</td>
           <td class="text-right font-bold font-mono text-gold">${fmtCurrency(s.TotalAmount)}</td>
-        </tr>`
+        </tr>`,
             )
             .join("");
 
@@ -127,7 +130,7 @@ const SellFabricPage = (() => {
       (p) => {
         currentPage = p;
         renderHistory();
-      }
+      },
     );
   }
 
@@ -153,7 +156,8 @@ const SellFabricPage = (() => {
     const fabricId = parseInt(selectEl.value, 10);
     const qty = parseFloat(qtyEl.value);
     const sellingPrice = parseFloat(priceEl.value);
-    const costPrice = parseFloat(document.getElementById("sell-unit-price").value) || 0;
+    const costPrice =
+      parseFloat(document.getElementById("sell-unit-price").value) || 0;
 
     if (qty <= 0) {
       showFieldError(qtyEl, "Quantity must be greater than zero.");
@@ -164,7 +168,10 @@ const SellFabricPage = (() => {
     const option = selectEl.options[selectEl.selectedIndex];
     const available = parseFloat(option.dataset.count) || 0;
     if (qty > available) {
-      showFieldError(qtyEl, `Insufficient fabric in stock. Max available: ${available.toFixed(2)}`);
+      showFieldError(
+        qtyEl,
+        `Insufficient fabric in stock. Max available: ${available.toFixed(2)}`,
+      );
       return;
     }
 
@@ -180,7 +187,7 @@ const SellFabricPage = (() => {
     try {
       await DB.fabricSales.add(payload);
       Toast.success("Fabric sale recorded successfully.");
-      
+
       // Reset form and reload
       document.getElementById("sell-qty").value = "";
       document.getElementById("sell-total").value = "";

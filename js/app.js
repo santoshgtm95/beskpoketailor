@@ -10,7 +10,7 @@ const AppShell = (() => {
     { id: "order-entry", icon: "✂️", label: "New Order", section: "main" },
     { id: "inventory", icon: "🧶", label: "Inventory", section: "main" },
     { id: "sell-fabric", icon: "💲", label: "Sell Fabric", section: "main" },
-    { id: "ready-made", icon: "👔", label: "Ready Made Products", section: "main" },
+    { id: "ready-made", icon: "👔", label: "Ready Made", section: "main" },
     { id: "expenses", icon: "💰", label: "Expenses", section: "main" },
     {
       id: "order-history",
