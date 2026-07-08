@@ -1682,9 +1682,12 @@ app.delete("/api/ready-made-products/:id", async (req, res) => {
 app.get("/api/ready-made-sales", async (req, res) => {
   try {
     const list = await dbAll(`
-      SELECT rms.*, rmp.Name AS ProductName, rmp.Category AS ProductCategory, rmp.Size AS ProductSize
+      SELECT rms.*, rmp.Name AS ProductName, rmp.Category AS ProductCategory, rmp.Size AS ProductSize,
+             rmp.FabricID AS ProductFabricID, rmp.FabricQtyUsed AS ProductFabricQtyUsed,
+             rmp.TailorFees AS ProductTailorFees, fi.Price AS FabricPrice
       FROM ready_made_sales rms
       JOIN ready_made_products rmp ON rms.ProductID = rmp.ProductID
+      LEFT JOIN fabric_inventory fi ON rmp.FabricID = fi.FabricID
       ORDER BY rms.SaleID DESC
     `);
     res.json(list);

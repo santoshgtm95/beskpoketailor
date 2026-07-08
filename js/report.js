@@ -18,6 +18,15 @@ const ReportView = (() => {
   let readyMadeSalesList = [];
   let readyMadeProductsList = [];
 
+  // Snapshot of the last rendered report (used by PDF export)
+  let lastFiltered = {
+    orders: [],
+    expenses: [],
+    fabricSales: [],
+    readyMadeSales: [],
+  };
+  let lastStats = null; // { summary, orderStats, fsStats, rmStats }
+
   const fType = () => document.getElementById("report-filter-type");
   const fDaily = () => document.getElementById("report-daily-filter");
   const fMonthly = () => document.getElementById("report-monthly-filter");
@@ -87,6 +96,7 @@ const ReportView = (() => {
         inPeriod(s.SaleDate),
       );
 
+      lastFiltered = { orders, expenses, fabricSales, readyMadeSales };
       await renderReport(orders, expenses, fabricSales, readyMadeSales);
     } catch (err) {
       console.error(err);
@@ -269,7 +279,233 @@ const ReportView = (() => {
     setText("report-rm-count", rmStats.count);
     setText("report-rm-units", rmStats.units);
 
+    lastStats = { summary, orderStats, fsStats, rmStats };
+
     renderOrderTable(orders);
+  }
+
+  function periodLabel() {
+    const type = fType().value;
+    if (type === "daily") return `Daily Report — ${fmtDate(valDate().value)}`;
+    if (type === "monthly") {
+      const [y, m] = valMonth().value.split("-");
+      const monthName = new Date(+y, +m - 1).toLocaleDateString("en-GB", {
+        month: "long",
+        year: "numeric",
+      });
+      return `Monthly Report — ${monthName}`;
+    }
+    return `Yearly Report — ${valYear().value}`;
+  }
+
+  async function printPdf() {
+    const { orders, fabricSales, readyMadeSales } = lastFiltered;
+    const stats = lastStats;
+    if (!stats) {
+      Toast.warning("Report not loaded yet.");
+      return;
+    }
+
+    const fabricMap = Object.fromEntries(
+      fabricList.map((f) => [f.FabricID, f]),
+    );
+    const productMap = Object.fromEntries(
+      readyMadeProductsList.map((p) => [p.ProductID, p]),
+    );
+
+    // Per-order tailor fees & fabric cost
+    const allOrderLines = await DB.orderlines.getAll().catch(() => []);
+    const perOrder = {};
+    allOrderLines.forEach((line) => {
+      if (!perOrder[line.OrderID]) {
+        perOrder[line.OrderID] = { tailorFees: 0, fabricCost: 0 };
+      }
+      perOrder[line.OrderID].tailorFees += Number(line.TailorFees) || 0;
+      if (line.FabricID && line.UseCount > 0) {
+        const fabric = fabricMap[line.FabricID];
+        if (fabric && fabric.Price > 0) {
+          perOrder[line.OrderID].fabricCost += line.UseCount * fabric.Price;
+        }
+      }
+    });
+
+    /* ── Summary section ── */
+    const s = stats.summary;
+    const summaryRows = [
+      ["Total Revenue", fmtCurrency(s.revenue)],
+      ["Total Expenses", fmtCurrency(s.expenses)],
+      ["Total Fabric Cost", fmtCurrency(s.fabricCost)],
+      ["Total Tailor Fees", fmtCurrency(s.tailorFees)],
+      ["Card Fees", fmtCurrency(s.cardFees)],
+      ["Total Profit", fmtCurrency(s.profit)],
+      ["Transactions", String(s.transactions)],
+      ["Items Sold", String(s.items)],
+    ]
+      .map(
+        ([k, v]) =>
+          `<tr><td>${k}</td><td class="num">${v}</td></tr>`,
+      )
+      .join("");
+
+    /* ── Orders section ── */
+    const sortedOrders = [...orders].sort(
+      (a, b) => new Date(a.OrderDate) - new Date(b.OrderDate),
+    );
+    let oTotals = { total: 0, fees: 0, tailor: 0, fabric: 0 };
+    const orderRows = sortedOrders
+      .map((o) => {
+        const pm =
+          o.PaymentMethod === "Credit" ? "Card" : o.PaymentMethod || "Cash";
+        const fee = o.TransactionFee || 0;
+        const po = perOrder[o.OrderID] || { tailorFees: 0, fabricCost: 0 };
+        oTotals.total += o.TotalAmount || 0;
+        oTotals.fees += fee;
+        oTotals.tailor += po.tailorFees;
+        oTotals.fabric += po.fabricCost;
+        return `<tr>
+          <td>${fmtOrderId(o.OrderID)}</td>
+          <td>${fmtDate(o.OrderDate)}</td>
+          <td class="num">${fmtCurrency(o.TotalAmount)}</td>
+          <td>${pm}</td>
+          <td class="num">${fmtCurrency(fee)}</td>
+          <td class="num">${fmtCurrency(po.tailorFees)}</td>
+          <td class="num">${fmtCurrency(po.fabricCost)}</td>
+        </tr>`;
+      })
+      .join("");
+    const ordersTable = sortedOrders.length
+      ? `<table>
+          <thead><tr><th>Order ID</th><th>Date</th><th class="num">Order Total</th><th>Payment Method</th><th class="num">Card Fees</th><th class="num">Tailor Fees</th><th class="num">Fabric Cost</th></tr></thead>
+          <tbody>${orderRows}</tbody>
+          <tfoot><tr><td colspan="2">Total (${sortedOrders.length} orders)</td><td class="num">${fmtCurrency(oTotals.total)}</td><td></td><td class="num">${fmtCurrency(oTotals.fees)}</td><td class="num">${fmtCurrency(oTotals.tailor)}</td><td class="num">${fmtCurrency(oTotals.fabric)}</td></tr></tfoot>
+        </table>`
+      : `<p class="empty">No orders in this period.</p>`;
+
+    /* ── Fabric Sales section ── */
+    const sortedFs = [...fabricSales].sort(
+      (a, b) => new Date(a.SaleDate) - new Date(b.SaleDate),
+    );
+    let fsTotals = { qty: 0, total: 0 };
+    const fsRows = sortedFs
+      .map((x) => {
+        fsTotals.qty += x.Quantity || 0;
+        fsTotals.total += x.TotalAmount || 0;
+        return `<tr>
+          <td>${fmtDate(x.SaleDate)}</td>
+          <td>${sanitize(x.FabricName)}${x.FabricCode ? ` (${sanitize(x.FabricCode)})` : ""}</td>
+          <td>${sanitize(x.FabricColor || "—")}</td>
+          <td class="num">${fmtQty(x.Quantity || 0)} ${sanitize(x.FabricUnit || "")}</td>
+          <td class="num">${fmtCurrency(x.UnitPrice)}</td>
+          <td class="num">${fmtCurrency(x.SellingPrice)}</td>
+          <td class="num">${fmtCurrency(x.TotalAmount)}</td>
+        </tr>`;
+      })
+      .join("");
+    const fsTable = sortedFs.length
+      ? `<table>
+          <thead><tr><th>Date</th><th>Fabric</th><th>Color</th><th class="num">Qty Sold</th><th class="num">Cost Price</th><th class="num">Sell Price</th><th class="num">Total Amount</th></tr></thead>
+          <tbody>${fsRows}</tbody>
+          <tfoot><tr><td colspan="3">Total (${sortedFs.length} sales)</td><td class="num">${fmtQty(fsTotals.qty)}</td><td></td><td></td><td class="num">${fmtCurrency(fsTotals.total)}</td></tr></tfoot>
+        </table>`
+      : `<p class="empty">No fabric sales in this period.</p>`;
+
+    /* ── Ready Made Sales section ── */
+    const sortedRm = [...readyMadeSales].sort(
+      (a, b) => new Date(a.SaleDate) - new Date(b.SaleDate),
+    );
+    let rmTotals = { qty: 0, fabric: 0, tailor: 0, total: 0 };
+    const rmRows = sortedRm
+      .map((x) => {
+        const qty = x.Quantity || 0;
+        const product = productMap[x.ProductID];
+        let fabricCost = 0;
+        let tailorFees = 0;
+        if (product) {
+          tailorFees = (product.TailorFees || 0) * qty;
+          if (product.FabricID && product.FabricQtyUsed > 0) {
+            const fabric = fabricMap[product.FabricID];
+            if (fabric && fabric.Price > 0) {
+              fabricCost = product.FabricQtyUsed * fabric.Price * qty;
+            }
+          }
+        }
+        rmTotals.qty += qty;
+        rmTotals.fabric += fabricCost;
+        rmTotals.tailor += tailorFees;
+        rmTotals.total += x.TotalAmount || 0;
+        return `<tr>
+          <td>${fmtDate(x.SaleDate)}</td>
+          <td>${sanitize(x.ProductName)}</td>
+          <td class="num">${qty} pcs</td>
+          <td class="num">${fmtCurrency(fabricCost)}</td>
+          <td class="num">${fmtCurrency(tailorFees)}</td>
+          <td class="num">${fmtCurrency(x.SellingPrice)}</td>
+          <td class="num">${fmtCurrency(x.TotalAmount)}</td>
+        </tr>`;
+      })
+      .join("");
+    const rmTable = sortedRm.length
+      ? `<table>
+          <thead><tr><th>Date</th><th>Product Name</th><th class="num">Qty Sold</th><th class="num">Fabric Cost</th><th class="num">Tailor Fees</th><th class="num">Selling Price</th><th class="num">Total Amount</th></tr></thead>
+          <tbody>${rmRows}</tbody>
+          <tfoot><tr><td colspan="2">Total (${sortedRm.length} sales)</td><td class="num">${rmTotals.qty} pcs</td><td class="num">${fmtCurrency(rmTotals.fabric)}</td><td class="num">${fmtCurrency(rmTotals.tailor)}</td><td></td><td class="num">${fmtCurrency(rmTotals.total)}</td></tr></tfoot>
+        </table>`
+      : `<p class="empty">No ready made sales in this period.</p>`;
+
+    const html = `<!DOCTYPE html><html><head>
+    <title>${periodLabel()}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      @page { size: A4; margin: 15mm 12mm; }
+      * { box-sizing: border-box; }
+      body { font-family: 'Inter', 'Noto Sans Thai', sans-serif; color: #111; margin: 0; font-size: 12px; -webkit-print-color-adjust: exact; }
+      .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #111; padding-bottom: 12px; margin-bottom: 20px; }
+      .brand { font-size: 18px; font-weight: 800; letter-spacing: 2px; }
+      .report-title { font-size: 13px; color: #444; font-weight: 600; text-align: right; }
+      h2 { font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; margin: 26px 0 10px 0; padding-bottom: 6px; border-bottom: 1px solid #111; page-break-after: avoid; }
+      table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+      th, td { padding: 7px 8px; border-bottom: 1px solid #eee; text-align: left; }
+      th { font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: #666; font-weight: 700; border-bottom: 2px solid #111; }
+      .num { text-align: right; font-variant-numeric: tabular-nums; }
+      tfoot td { font-weight: 700; border-top: 2px solid #111; border-bottom: none; padding-top: 9px; }
+      .summary-table { max-width: 380px; }
+      .summary-table td { font-size: 13px; padding: 8px; }
+      .summary-table tr:last-of-type td { border-bottom: none; }
+      .empty { color: #888; font-style: italic; font-size: 12px; }
+      tr { page-break-inside: avoid; }
+    </style>
+    </head><body>
+      <div class="header">
+        <div class="brand">SIAM BESPOKE</div>
+        <div class="report-title">${periodLabel()}<br><span style="font-weight:400;color:#888;">Generated: ${fmtDate(todayStr())}</span></div>
+      </div>
+      <h2>Summary</h2>
+      <table class="summary-table"><tbody>${summaryRows}</tbody></table>
+      <h2>Orders</h2>
+      ${ordersTable}
+      <h2>Fabric Sales</h2>
+      ${fsTable}
+      <h2>Ready Made Sales</h2>
+      ${rmTable}
+    </body></html>`;
+
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    document.body.appendChild(iframe);
+    iframe.contentWindow.document.open();
+    iframe.contentWindow.document.write(html);
+    iframe.contentWindow.document.close();
+
+    setTimeout(() => {
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+      setTimeout(() => document.body.removeChild(iframe), 2000);
+    }, 300);
   }
 
   function renderOrderTable(orders) {
@@ -304,5 +540,5 @@ const ReportView = (() => {
     }
   }
 
-  return { init, onFilterTypeChange, loadData };
+  return { init, onFilterTypeChange, loadData, printPdf };
 })();
