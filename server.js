@@ -1614,7 +1614,6 @@ app.post("/api/ready-made-products", async (req, res) => {
   const { Name, Category, Type, Size, Cost, FabricID, FabricQtyUsed, Color, Count, SellingPrice, TailorFees } = req.body;
   if (!Name) return res.status(400).json({ message: "Name is required" });
   if (!Category) return res.status(400).json({ message: "Category is required" });
-  if (Cost == null) return res.status(400).json({ message: "Cost is required" });
   if (Count == null || Count < 0) return res.status(400).json({ message: "Count is required" });
   if (SellingPrice == null) return res.status(400).json({ message: "Selling Price is required" });
 
@@ -1635,7 +1634,7 @@ app.post("/api/ready-made-products", async (req, res) => {
     const result = await dbRun(`
       INSERT INTO ready_made_products (Name, Category, Type, Size, Cost, FabricID, FabricQtyUsed, Color, Count, SellingPrice, TailorFees, CreatedAt, UpdatedAt) 
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [Name, Category, Type || null, Size || "", Cost, FabricID || null, FabricQtyUsed || 0, Color || null, Count, SellingPrice, TailorFees || 0, now, now]);
+    `, [Name, Category, Type || null, Size || "", Cost || 0, FabricID || null, FabricQtyUsed || 0, Color || null, Count, SellingPrice, TailorFees || 0, now, now]);
 
     res.status(201).json(result.id);
   } catch (err) {
@@ -1647,7 +1646,6 @@ app.put("/api/ready-made-products/:id", async (req, res) => {
   const { Name, Category, Type, Size, Cost, FabricID, FabricQtyUsed, Color, Count, SellingPrice, TailorFees } = req.body;
   if (!Name) return res.status(400).json({ message: "Name is required" });
   if (!Category) return res.status(400).json({ message: "Category is required" });
-  if (Cost == null) return res.status(400).json({ message: "Cost is required" });
   if (Count == null || Count < 0) return res.status(400).json({ message: "Count is required" });
   if (SellingPrice == null) return res.status(400).json({ message: "Selling Price is required" });
 
@@ -1659,7 +1657,7 @@ app.put("/api/ready-made-products/:id", async (req, res) => {
       UPDATE ready_made_products 
       SET Name = ?, Category = ?, Type = ?, Size = ?, Cost = ?, FabricID = ?, FabricQtyUsed = ?, Color = ?, Count = ?, SellingPrice = ?, TailorFees = ?, UpdatedAt = ?
       WHERE ProductID = ?
-    `, [Name, Category, Type || null, Size || "", Cost, FabricID || null, FabricQtyUsed || 0, Color || null, Count, SellingPrice, TailorFees || 0, now, req.params.id]);
+    `, [Name, Category, Type || null, Size || "", Cost || 0, FabricID || null, FabricQtyUsed || 0, Color || null, Count, SellingPrice, TailorFees || 0, now, req.params.id]);
 
     if (result.changes === 0) return res.status(404).json({ message: "Product not found" });
     res.json({ success: true });

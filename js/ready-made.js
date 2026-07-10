@@ -230,7 +230,7 @@ const ReadyMadePage = (() => {
       document.getElementById("rm-type").value = p.Type || "";
       document.getElementById("rm-size").value = p.Size || "";
       document.getElementById("rm-color").value = p.Color || "";
-      document.getElementById("rm-cost").value = p.Cost;
+      document.getElementById("rm-cost").value = p.Cost || "";
       document.getElementById("rm-selling-price").value = p.SellingPrice;
       document.getElementById("rm-tailor-fees").value = p.TailorFees || 0;
       document.getElementById("rm-fabric-id").value = p.FabricID || "";
@@ -266,7 +266,6 @@ const ReadyMadePage = (() => {
       !validateFields([
         { el: nameEl, msg: "Product Name is required." },
         { el: catEl, msg: "Category is required." },
-        { el: costEl, msg: "Cost Price is required." },
         { el: sellPriceEl, msg: "Selling Price is required." },
         { el: countEl, msg: "Quantity is required." },
       ])
@@ -299,7 +298,7 @@ const ReadyMadePage = (() => {
       Category: catEl.value,
       Type: document.getElementById("rm-type").value.trim() || null,
       Size: sizeEl.value.trim(),
-      Cost: parseFloat(costEl.value),
+      Cost: parseFloat(costEl.value) || 0,
       FabricID: fabricId,
       FabricQtyUsed: fabricQty,
       Color: document.getElementById("rm-color").value.trim() || null,
