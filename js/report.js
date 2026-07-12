@@ -299,7 +299,7 @@ const ReportView = (() => {
   }
 
   async function printPdf() {
-    const { orders, fabricSales, readyMadeSales } = lastFiltered;
+    const { orders, expenses, fabricSales, readyMadeSales } = lastFiltered;
     const stats = lastStats;
     if (!stats) {
       Toast.warning("Report not loaded yet.");
@@ -452,6 +452,29 @@ const ReportView = (() => {
         </table>`
       : `<p class="empty">No ready made sales in this period.</p>`;
 
+    /* ── Expenses section ── */
+    const sortedExp = [...expenses].sort(
+      (a, b) => new Date(a.ExpenseDate) - new Date(b.ExpenseDate),
+    );
+    let expTotal = 0;
+    const expRows = sortedExp
+      .map((e) => {
+        expTotal += e.Amount || 0;
+        return `<tr>
+          <td>${fmtDate(e.ExpenseDate)}</td>
+          <td>${sanitize(e.Name || "—")}</td>
+          <td class="num">${fmtCurrency(e.Amount)}</td>
+        </tr>`;
+      })
+      .join("");
+    const expTable = sortedExp.length
+      ? `<table class="summary-table" style="max-width:480px;">
+          <thead><tr><th>Date</th><th>Name</th><th class="num">Amount</th></tr></thead>
+          <tbody>${expRows}</tbody>
+          <tfoot><tr><td colspan="2">Total (${sortedExp.length} expenses)</td><td class="num">${fmtCurrency(expTotal)}</td></tr></tfoot>
+        </table>`
+      : `<p class="empty">No expenses in this period.</p>`;
+
     const html = `<!DOCTYPE html><html><head>
     <title>${periodLabel()}</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -487,6 +510,8 @@ const ReportView = (() => {
       ${fsTable}
       <h2>Ready Made Sales</h2>
       ${rmTable}
+      <h2>Expenses</h2>
+      ${expTable}
     </body></html>`;
 
     const iframe = document.createElement("iframe");

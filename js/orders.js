@@ -403,6 +403,11 @@ const OrdersPage = (() => {
       document.getElementById("meas-front").value = "";
       document.getElementById("meas-back").value = "";
       document.getElementById("meas-neck").value = "";
+      document.getElementById("meas-front-length").value = "";
+      document.getElementById("meas-back-length").value = "";
+      document.getElementById("meas-bust-height").value = "";
+      document.getElementById("meas-bust-width").value = "";
+      document.getElementById("meas-arm").value = "";
       document.getElementById("meas-chk-sloping-shoulder").checked = false;
       document.getElementById("meas-chk-hunched-back").checked = false;
       document.getElementById("meas-chk-belly").checked = false;
@@ -487,6 +492,7 @@ const OrdersPage = (() => {
       document.getElementById("meas-shirt-front").value = "";
       document.getElementById("meas-shirt-back").value = "";
       document.getElementById("meas-shirt-skirt-length").value = "";
+      document.getElementById("meas-shirt-arm").value = "";
 
       document.getElementById("meas-shirt-chk-sloping-shoulder").checked =
         false;
@@ -717,6 +723,7 @@ const OrdersPage = (() => {
       "front",
       "back",
       "skirt-length",
+      "arm",
     ];
     fields.forEach((f) => {
       const v = getVal("meas-shirt-" + f);
@@ -842,10 +849,21 @@ const OrdersPage = (() => {
       "front",
       "back",
       "neck",
+      "front-length",
+      "back-length",
+      "bust-height",
+      "bust-width",
+      "arm",
     ];
     fields.forEach((f) => {
       const v = getVal("meas-" + f);
-      if (v) m.push(`${f.charAt(0).toUpperCase() + f.slice(1)}: ${v}`);
+      if (v) {
+        const label = f
+          .split("-")
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(" ");
+        m.push(`${label}: ${v}`);
+      }
     });
 
     const chks = [];
@@ -999,6 +1017,11 @@ const OrdersPage = (() => {
     Front: "meas-front",
     Back: "meas-back",
     Neck: "meas-neck",
+    "Front Length": "meas-front-length",
+    "Back Length": "meas-back-length",
+    "Bust Height": "meas-bust-height",
+    "Bust Width": "meas-bust-width",
+    Arm: "meas-arm",
   };
   const JACKET_TRAITS = {
     "Sloping Shoulder": "meas-chk-sloping-shoulder",
@@ -1049,6 +1072,7 @@ const OrdersPage = (() => {
     Front: "meas-shirt-front",
     Back: "meas-shirt-back",
     "Skirt Length": "meas-shirt-skirt-length",
+    Arm: "meas-shirt-arm",
   };
   const SHIRT_TRAITS = {
     "ไหล่เท (Sloping Shoulders)": "meas-shirt-chk-sloping-shoulder",
@@ -2052,6 +2076,7 @@ const OrdersPage = (() => {
     "Back Length": "ยาวหลัง",
     "Bust Height": "อกสูง",
     "Bust Width": "อกห่าง",
+    Arm: "วงแขน",
     // Traits
     "Sloping Shoulder": "ไหล่เท",
     "Sloping Shoulders": "ไหล่เท",
