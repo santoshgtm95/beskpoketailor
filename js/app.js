@@ -8,12 +8,17 @@ const AppShell = (() => {
   const NAV_ITEMS = [
     { id: "dashboard", icon: "🏠", label: "Dashboard", section: "main" },
     { id: "order-entry", icon: "✂️", label: "New Order", section: "main" },
+    { id: "inventory", icon: "🧶", label: "Inventory", section: "main" },
+    { id: "sell-fabric", icon: "💲", label: "Sell Fabric", section: "main" },
+    { id: "ready-made", icon: "👔", label: "Ready Made", section: "main" },
+    { id: "expenses", icon: "💰", label: "Expenses", section: "main" },
     {
       id: "order-history",
       icon: "📋",
       label: "Order History",
       section: "main",
     },
+    { id: "report", icon: "📊", label: "Report", section: "main" },
     { id: "customers", icon: "👥", label: "Customers", section: "manage" },
     { id: "catalog", icon: "🧵", label: "Catalog", section: "manage" },
     {
@@ -96,17 +101,32 @@ const AppShell = (() => {
       case "dashboard":
         await DashboardPage.load();
         break;
+      case "sell-fabric":
+        await SellFabricPage.load();
+        break;
+      case "ready-made":
+        await ReadyMadePage.load();
+        break;
       case "order-entry":
         await OrdersPage.populateCategories();
         break;
       case "order-history":
         await OrdersPage.loadHistory();
         break;
+      case "report":
+        await ReportView.init();
+        break;
       case "customers":
         await CustomersPage.load();
         break;
       case "catalog":
         await CatalogPage.load();
+        break;
+      case "inventory":
+        await InventoryPage.load();
+        break;
+      case "expenses":
+        await ExpensesPage.load();
         break;
       case "users":
         await UsersPage.load();
@@ -170,6 +190,123 @@ const AppShell = (() => {
     _currentPage = null;
   }
 
+  async function handleBackup() {
+    const ok = await Confirm.show(
+      "Create a backup of the database, inventory, expenses, and customer images?",
+      "Backup",
+    );
+    if (!ok) return;
+
+    const btn = document.getElementById("btn-backup");
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Creating backup…';
+
+    try {
+      const response = await fetch("/api/backup");
+      if (!response.ok) {
+        throw new Error(`Backup failed: ${response.statusText}`);
+      }
+
+      // Get filename from Content-Disposition header; fallback to local timestamp format.
+      const contentDisposition = response.headers.get("content-disposition");
+      const now = new Date();
+      const pad2 = (n) => String(n).padStart(2, "0");
+      let filename = `${now.getFullYear()}${pad2(now.getMonth() + 1)}${pad2(now.getDate())}${pad2(now.getHours())}${pad2(now.getMinutes())}${pad2(now.getSeconds())}_backup.zip`;
+
+      if (contentDisposition) {
+        const utf8Match = /filename\*=UTF-8''([^;]+)/i.exec(contentDisposition);
+        const plainMatch = /filename="?([^";]+)"?/i.exec(contentDisposition);
+
+        if (utf8Match && utf8Match[1]) {
+          filename = decodeURIComponent(utf8Match[1]);
+        } else if (plainMatch && plainMatch[1]) {
+          filename = plainMatch[1].trim();
+        }
+      }
+
+      // Create blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      if (typeof Toast !== "undefined") {
+        Toast.success("Backup created and downloaded successfully!");
+      }
+    } catch (err) {
+      console.error("Backup error:", err);
+      if (typeof Toast !== "undefined") {
+        Toast.error("Backup failed: " + err.message);
+      }
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
+  }
+
+  async function handleRestore() {
+    const fileInput = document.getElementById("restore-file-input");
+    if (!fileInput) {
+      if (typeof Toast !== "undefined")
+        Toast.error("Restore control not found.");
+      return;
+    }
+
+    const selectedFile = await new Promise((resolve) => {
+      fileInput.value = "";
+      fileInput.onchange = () => resolve(fileInput.files?.[0] || null);
+      fileInput.click();
+    });
+
+    if (!selectedFile) return;
+
+    const ok = await Confirm.show(
+      "Restore this backup zip? Current database, inventory, expenses, and customer images will be overwritten.",
+      "Restore Backup",
+    );
+    if (!ok) return;
+
+    const btn = document.getElementById("btn-restore");
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Restoring…';
+
+    try {
+      const formData = new FormData();
+      formData.append("backupFile", selectedFile);
+
+      const response = await fetch("/api/restore", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.message || "Restore failed.");
+      }
+
+      if (typeof Toast !== "undefined") {
+        Toast.success("Restore completed successfully.");
+      }
+
+      await navigate("dashboard", true);
+    } catch (err) {
+      console.error("Restore error:", err);
+      if (typeof Toast !== "undefined") {
+        Toast.error("Restore failed: " + err.message);
+      }
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
+  }
+
   // ── Init ───────────────────────────────────────────────────────
   async function init() {
     await DB.init();
@@ -180,10 +317,15 @@ const AppShell = (() => {
       { id: "page-dashboard-placeholder", url: "views/dashboard.html" },
       { id: "page-order-entry-placeholder", url: "views/order-entry.html" },
       { id: "page-order-history-placeholder", url: "views/order-history.html" },
+      { id: "page-report-placeholder", url: "views/report.html" },
       { id: "page-customers-placeholder", url: "views/customers.html" },
       { id: "page-catalog-placeholder", url: "views/catalog.html" },
+      { id: "page-inventory-placeholder", url: "views/inventory.html" },
+      { id: "page-sell-fabric-placeholder", url: "views/sell-fabric.html" },
+      { id: "page-ready-made-placeholder", url: "views/ready-made.html" },
       { id: "page-users-placeholder", url: "views/users.html" },
       { id: "page-auditlog-placeholder", url: "views/auditlog.html" },
+      { id: "page-expenses-placeholder", url: "views/expenses.html" },
       { id: "modals-placeholder", url: "views/modals.html" },
     ];
 
@@ -220,6 +362,18 @@ const AppShell = (() => {
       .querySelectorAll(".btn-logout")
       .forEach((b) => b.addEventListener("click", handleLogout));
 
+    // Backup button
+    const backupBtn = document.getElementById("btn-backup");
+    if (backupBtn) {
+      backupBtn.addEventListener("click", handleBackup);
+    }
+
+    // Restore button
+    const restoreBtn = document.getElementById("btn-restore");
+    if (restoreBtn) {
+      restoreBtn.addEventListener("click", handleRestore);
+    }
+
     // Confirm modal buttons
     document
       .getElementById("confirm-ok")
@@ -248,6 +402,21 @@ const AppShell = (() => {
     document
       .getElementById("btn-save-user")
       .addEventListener("click", () => UsersPage.save());
+    document
+      .getElementById("btn-save-inventory")
+      .addEventListener("click", () => InventoryPage.save());
+    document
+      .getElementById("btn-save-expense")
+      .addEventListener("click", () => ExpensesPage.save());
+    document
+      .getElementById("btn-save-ready-made")
+      .addEventListener("click", () => ReadyMadePage.save());
+    document
+      .getElementById("btn-save-ready-made-sale")
+      .addEventListener("click", () => ReadyMadePage.saveSale());
+    document
+      .getElementById("btn-save-sell-fabric")
+      .addEventListener("click", () => SellFabricPage.save());
 
     // Quick action buttons
     document

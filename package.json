@@ -4,7 +4,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "build:exe": "node scripts/build-exe.js",
+    "build:exe": "node scripts/ensure-node-portable.js && node scripts/build-exe.js",
     "build:installer": "\"\"C:\\Program Files (x86)\\NSIS\\makensis.exe\"\" installer.nsi",
     "build": "npm run build:exe && npm run build:installer"
   },
@@ -25,6 +25,8 @@
     "outputPath": "bin"
   },
   "dependencies": {
+    "adm-zip": "^0.5.17",
+    "archiver": "^7.0.1",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "jimp": "^1.6.1",

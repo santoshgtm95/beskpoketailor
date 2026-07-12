@@ -8,6 +8,7 @@
       name="description"
       content="Siam Bespoke Tailor: Premium desktop tailor shop management – orders, customers, catalog, and more."
     />
+    <link rel="icon" type="image/x-icon" href="logo.ico" />
     <link rel="stylesheet" href="css/style.css" />
   </head>
   <body>
@@ -64,13 +65,6 @@
             alt="Siam Bespoke Tailor"
             class="brand-logo-img"
           />
-        </div>
-
-        <nav class="sidebar-nav" id="sidebar-nav">
-          <!-- built dynamically by AppShell.buildNav() -->
-        </nav>
-
-        <div class="sidebar-footer">
           <div class="user-chip">
             <div class="user-avatar" id="sidebar-user-avatar">A</div>
             <div class="user-info">
@@ -78,9 +72,22 @@
               <div class="user-role" id="sidebar-user-role">Admin</div>
             </div>
           </div>
+        </div>
+
+        <nav class="sidebar-nav" id="sidebar-nav">
+          <!-- built dynamically by AppShell.buildNav() -->
+        </nav>
+
+        <div class="sidebar-footer">
           <button class="btn btn-ghost btn-full btn-logout" id="btn-logout">
             🚪 Sign Out
           </button>
+          <input
+            type="file"
+            id="restore-file-input"
+            accept=".zip,application/zip"
+            style="display: none"
+          />
         </div>
       </aside>
 
@@ -93,6 +100,12 @@
           </div>
           <div class="topbar-actions">
             <span class="topbar-clock" id="topbar-clock">00:00:00</span>
+            <button class="btn btn-ghost btn-sm btn-backup" id="btn-backup">
+              💾 Backup Data
+            </button>
+            <button class="btn btn-ghost btn-sm btn-restore" id="btn-restore">
+              ♻️ Restore Backup
+            </button>
             <button
               class="btn btn-gold btn-sm"
               onclick="AppShell.navigate('order-entry')"
@@ -106,23 +119,34 @@
         <div id="page-dashboard-placeholder"></div>
         <div id="page-order-entry-placeholder"></div>
         <div id="page-order-history-placeholder"></div>
+        <div id="page-report-placeholder"></div>
         <div id="page-customers-placeholder"></div>
         <div id="page-catalog-placeholder"></div>
+        <div id="page-inventory-placeholder"></div>
+        <div id="page-sell-fabric-placeholder"></div>
+        <div id="page-ready-made-placeholder"></div>
         <div id="page-users-placeholder"></div>
         <div id="page-auditlog-placeholder"></div>
+        <div id="page-expenses-placeholder"></div>
       </div>
     </div>
 
     <!-- Modals Placeholder -->
     <div id="modals-placeholder"></div>
 
-    <!-- Scripts -->
+    <!-- Chart.js for dashboard graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <script src="js/db.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/dashboard.js"></script>
     <script src="js/orders.js"></script>
     <script src="js/catalog.js"></script>
+    <script src="js/inventory.js"></script>
+    <script src="js/sell-fabric.js"></script>
+    <script src="js/ready-made.js"></script>
+    <script src="js/report.js"></script>
+    <script src="js/expenses.js"></script>
     <script src="js/app.js"></script>
   </body>
 </html>

@@ -10,6 +10,8 @@ const path = require("path");
 const multer = require("multer");
 const fs = require("fs");
 const { spawn } = require("child_process");
+const archiver = require("archiver");
+const AdmZip = require("adm-zip");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -61,6 +63,12 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
+// Ensure customer-images subfolder exists
+const customerImagesDir = path.join(uploadDir, "customer-images");
+if (!fs.existsSync(customerImagesDir)) {
+  fs.mkdirSync(customerImagesDir, { recursive: true });
+}
+
 // Multer Storage configuration for Subcategory images
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -73,6 +81,34 @@ const storage = multer.diskStorage({
   },
 });
 const upload = multer({ storage: storage });
+
+// Multer Storage configuration for Customer images
+const customerImageStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, customerImagesDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname);
+    cb(null, "customer-" + uniqueSuffix + ext);
+  },
+});
+const uploadCustomer = multer({ storage: customerImageStorage });
+
+const restoreUploadDir = path.join(DATA_DIR, "restore-upload-temp");
+if (!fs.existsSync(restoreUploadDir)) {
+  fs.mkdirSync(restoreUploadDir, { recursive: true });
+}
+const restoreUpload = multer({
+  dest: restoreUploadDir,
+  limits: { fileSize: 500 * 1024 * 1024 },
+});
+
+function bangkokNowIso() {
+  return new Date(Date.now() + 7 * 60 * 60 * 1000)
+    .toISOString()
+    .replace(/Z$/, "+07:00");
+}
 
 // Middleware
 app.use(cors());
@@ -114,28 +150,67 @@ function handleSqlError(res, err, context) {
 
 // Database setup
 const dbPath = path.join(DATA_DIR, "beskpoke.db");
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error("Error opening SQLite database:", err.message);
-  } else {
-    console.log("Connected to SQLite database at:", dbPath);
-    // Copy existing db if it exists in __dirname but not in DATA_DIR
-    const localDb = path.join(__dirname, "beskpoke.db");
-    if (
-      DATA_DIR !== __dirname &&
-      fs.existsSync(localDb) &&
-      !fs.existsSync(dbPath)
-    ) {
-      try {
-        fs.copyFileSync(localDb, dbPath);
-        console.log("Migrated local database to:", dbPath);
-      } catch (migrateErr) {
-        console.error("Migration failed:", migrateErr.message);
+let db = null;
+
+function openDatabase(runInit = true) {
+  return new Promise((resolve, reject) => {
+    db = new sqlite3.Database(dbPath, (err) => {
+      if (err) {
+        console.error("Error opening SQLite database:", err.message);
+        reject(err);
+        return;
       }
+
+      console.log("Connected to SQLite database at:", dbPath);
+      if (!runInit) {
+        resolve();
+        return;
+      }
+
+      initDb()
+        .then(resolve)
+        .catch((initErr) => {
+          console.error("Database initialization error:", initErr.message);
+          reject(initErr);
+        });
+    });
+  });
+}
+
+function closeDatabase() {
+  return new Promise((resolve, reject) => {
+    if (!db) {
+      resolve();
+      return;
     }
-    initDb().catch(console.error);
+
+    db.close((err) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      db = null;
+      resolve();
+    });
+  });
+}
+
+// Copy existing db if it exists in __dirname but not in DATA_DIR
+const localDb = path.join(__dirname, "beskpoke.db");
+if (
+  DATA_DIR !== __dirname &&
+  fs.existsSync(localDb) &&
+  !fs.existsSync(dbPath)
+) {
+  try {
+    fs.copyFileSync(localDb, dbPath);
+    console.log("Migrated local database to:", dbPath);
+  } catch (migrateErr) {
+    console.error("Migration failed:", migrateErr.message);
   }
-});
+}
+
+openDatabase(true).catch(console.error);
 
 // Helper functions for Promise-based db operations
 const dbRun = (sql, params = []) =>
@@ -222,9 +297,18 @@ async function initDb() {
       Name TEXT NOT NULL,
       Phone TEXT,
       Email TEXT,
-      Address TEXT
+      Address TEXT,
+      Image TEXT
     )
   `);
+
+  // Migrate existing customers table to add Image column
+  try {
+    await dbRun("ALTER TABLE customers ADD COLUMN Image TEXT;");
+    console.log("Database migrated: Added Image column to customers.");
+  } catch (e) {
+    // Ignore error if column already exists
+  }
 
   await dbRun(`
     CREATE TABLE IF NOT EXISTS orders (
@@ -232,7 +316,12 @@ async function initDb() {
       CustomerID INTEGER NOT NULL,
       UserID INTEGER NOT NULL,
       OrderDate TEXT NOT NULL,
+      CreatedAt TEXT,
       TotalAmount REAL NOT NULL,
+      PaymentMethod TEXT DEFAULT 'Cash',
+      Deposit REAL DEFAULT 0,
+      Discount REAL DEFAULT 0,
+      RemainingBalance REAL DEFAULT 0,
       FOREIGN KEY (CustomerID) REFERENCES customers(CustomerID) ON DELETE RESTRICT,
       FOREIGN KEY (UserID) REFERENCES users(UserID) ON DELETE RESTRICT
     )
@@ -249,15 +338,48 @@ async function initDb() {
       Quantity REAL NOT NULL,
       UnitPrice REAL NOT NULL,
       LineTotal REAL NOT NULL,
+      FabricID INTEGER,
+      UseCount REAL,
+      FabricUnit TEXT,
+      TailorFees REAL DEFAULT 0,
       FOREIGN KEY (OrderID) REFERENCES orders(OrderID) ON DELETE CASCADE
     )
   `);
+
+  // Migrate orders table: add payment/deposit/discount columns if not present
+  const orderMigrations = [
+    "ALTER TABLE orders ADD COLUMN PaymentMethod TEXT DEFAULT 'Cash'",
+    "ALTER TABLE orders ADD COLUMN Deposit REAL DEFAULT 0",
+    "ALTER TABLE orders ADD COLUMN Discount REAL DEFAULT 0",
+    "ALTER TABLE orders ADD COLUMN RemainingBalance REAL DEFAULT 0",
+    "ALTER TABLE orders ADD COLUMN TransactionFee REAL DEFAULT 0",
+    "ALTER TABLE orders ADD COLUMN CreatedAt TEXT",
+  ];
+  for (const sql of orderMigrations) {
+    try {
+      await dbRun(sql);
+    } catch (e) {
+      /* column already exists */
+    }
+  }
+
+  try {
+    await dbRun(
+      "UPDATE orders SET CreatedAt = COALESCE(CreatedAt, OrderDate || 'T00:00:00+07:00') WHERE CreatedAt IS NULL OR CreatedAt = ''",
+    );
+  } catch (e) {
+    /* ignore backfill issues */
+  }
 
   // Migrate existing databases: add new columns if not present
   const migrations = [
     "ALTER TABLE orderlines ADD COLUMN CategoryID INTEGER",
     "ALTER TABLE orderlines ADD COLUMN SubcatID INTEGER",
     "ALTER TABLE orderlines ADD COLUMN Description TEXT",
+    "ALTER TABLE orderlines ADD COLUMN FabricID INTEGER",
+    "ALTER TABLE orderlines ADD COLUMN UseCount REAL",
+    "ALTER TABLE orderlines ADD COLUMN FabricUnit TEXT",
+    "ALTER TABLE orderlines ADD COLUMN TailorFees REAL DEFAULT 0",
   ];
   for (const sql of migrations) {
     try {
@@ -330,6 +452,139 @@ async function initDb() {
     )
   `);
 
+  await dbRun(`
+    CREATE TABLE IF NOT EXISTS fabric_inventory (
+      FabricID INTEGER PRIMARY KEY AUTOINCREMENT,
+      Name TEXT NOT NULL,
+      Code TEXT,
+      Color TEXT NOT NULL,
+      Count REAL NOT NULL,
+      Unit TEXT NOT NULL DEFAULT 'yards',
+      Price REAL NOT NULL,
+      Remark TEXT,
+      CreatedAt TEXT,
+      UpdatedAt TEXT
+    )
+  `);
+
+  await dbRun(`
+    CREATE TABLE IF NOT EXISTS expenses (
+      ExpenseID INTEGER PRIMARY KEY AUTOINCREMENT,
+      ExpenseDate TEXT NOT NULL,
+      Name TEXT NOT NULL,
+      Amount REAL NOT NULL,
+      Remark TEXT,
+      CreatedAt TEXT,
+      UpdatedAt TEXT
+    )
+  `);
+
+  await dbRun(`
+    CREATE TABLE IF NOT EXISTS fabric_sales (
+      SaleID INTEGER PRIMARY KEY AUTOINCREMENT,
+      SaleDate TEXT NOT NULL,
+      FabricID INTEGER NOT NULL,
+      Quantity REAL NOT NULL,
+      UnitPrice REAL NOT NULL,
+      SellingPrice REAL NOT NULL,
+      TotalAmount REAL NOT NULL,
+      CreatedAt TEXT,
+      FOREIGN KEY (FabricID) REFERENCES fabric_inventory(FabricID) ON DELETE RESTRICT
+    )
+  `);
+
+  await dbRun(`
+    CREATE TABLE IF NOT EXISTS ready_made_products (
+      ProductID INTEGER PRIMARY KEY AUTOINCREMENT,
+      Name TEXT NOT NULL,
+      Category TEXT NOT NULL,
+      Type TEXT,
+      Size TEXT NOT NULL,
+      Cost REAL NOT NULL,
+      FabricID INTEGER,
+      FabricQtyUsed REAL DEFAULT 0,
+      Color TEXT,
+      Count INTEGER NOT NULL,
+      SellingPrice REAL NOT NULL,
+      TailorFees REAL DEFAULT 0,
+      CreatedAt TEXT,
+      UpdatedAt TEXT,
+      FOREIGN KEY (FabricID) REFERENCES fabric_inventory(FabricID) ON DELETE SET NULL
+    )
+  `);
+
+  await dbRun(`
+    CREATE TABLE IF NOT EXISTS ready_made_sales (
+      SaleID INTEGER PRIMARY KEY AUTOINCREMENT,
+      ProductID INTEGER NOT NULL,
+      SaleDate TEXT NOT NULL,
+      Quantity INTEGER NOT NULL,
+      SellingPrice REAL NOT NULL,
+      TotalAmount REAL NOT NULL,
+      CreatedAt TEXT,
+      FOREIGN KEY (ProductID) REFERENCES ready_made_products(ProductID) ON DELETE RESTRICT
+    )
+  `);
+
+  const inventoryMigrations = [
+    "ALTER TABLE fabric_inventory ADD COLUMN CreatedAt TEXT",
+    "ALTER TABLE fabric_inventory ADD COLUMN UpdatedAt TEXT",
+  ];
+  for (const sql of inventoryMigrations) {
+    try {
+      await dbRun(sql);
+    } catch (e) {
+      /* column already exists */
+    }
+  }
+
+  const expenseMigrations = [
+    "ALTER TABLE expenses ADD COLUMN CreatedAt TEXT",
+    "ALTER TABLE expenses ADD COLUMN UpdatedAt TEXT",
+  ];
+  for (const sql of expenseMigrations) {
+    try {
+      await dbRun(sql);
+    } catch (e) {
+      /* column already exists */
+    }
+  }
+
+  try {
+    await dbRun(
+      "UPDATE fabric_inventory SET CreatedAt = COALESCE(CreatedAt, ?), UpdatedAt = COALESCE(UpdatedAt, ?) WHERE CreatedAt IS NULL OR CreatedAt = '' OR UpdatedAt IS NULL OR UpdatedAt = ''",
+      [bangkokNowIso(), bangkokNowIso()],
+    );
+  } catch (e) {
+    /* ignore backfill issues */
+  }
+
+  try {
+    await dbRun(
+      "UPDATE expenses SET CreatedAt = COALESCE(CreatedAt, ?), UpdatedAt = COALESCE(UpdatedAt, ?) WHERE CreatedAt IS NULL OR CreatedAt = '' OR UpdatedAt IS NULL OR UpdatedAt = ''",
+      [bangkokNowIso(), bangkokNowIso()],
+    );
+  } catch (e) {
+    /* ignore backfill issues */
+  }
+
+  // Rename legacy category names to updated names
+  const categoryRenames = [
+    ["Jacket & Vest", "Jacket"],
+    ["Trousers & Skirt", "Pant"],
+    ["Shirt & Dress", "Shirt"],
+  ];
+  for (const [newName, oldName] of categoryRenames) {
+    try {
+      await dbRun("UPDATE categories SET Name = ? WHERE Name = ?", [
+        newName,
+        oldName,
+      ]);
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
   // Seeding default data if no users exist
   const userCount = await dbGet("SELECT COUNT(*) as count FROM users");
   if (userCount.count === 0) {
@@ -340,132 +595,21 @@ async function initDb() {
       "INSERT INTO users (Username, PasswordHash, Email, Phone, Role, Name) VALUES (?, ?, ?, ?, ?, ?)",
       ["admin", "admin123", "admin@beskpoke.com", "", "Admin", "Administrator"],
     );
-    await dbRun(
-      "INSERT INTO users (Username, PasswordHash, Email, Phone, Role, Name) VALUES (?, ?, ?, ?, ?, ?)",
-      ["clerk", "clerk123", "clerk@beskpoke.com", "", "Clerk", "Sarah Clerk"],
-    );
 
     // Categories
     const jacketCat = await dbRun("INSERT INTO categories (Name) VALUES (?)", [
-      "Jacket",
+      "Jacket & Vest",
     ]);
     const pantCat = await dbRun("INSERT INTO categories (Name) VALUES (?)", [
-      "Pant",
+      "Trousers & Skirt",
     ]);
     const shirtCat = await dbRun("INSERT INTO categories (Name) VALUES (?)", [
-      "Shirt",
+      "Shirt & Dress",
     ]);
 
     const jacketCatId = jacketCat.id;
     const pantCatId = pantCat.id;
     const shirtCatId = shirtCat.id;
-
-    // Subcategories
-    const leatherSub = await dbRun(
-      "INSERT INTO subcategories (CategoryID, Name, Image) VALUES (?, ?, ?)",
-      [jacketCatId, "Leather", ""],
-    );
-    const denimSub = await dbRun(
-      "INSERT INTO subcategories (CategoryID, Name, Image) VALUES (?, ?, ?)",
-      [jacketCatId, "Denim", ""],
-    );
-    const formalPantSub = await dbRun(
-      "INSERT INTO subcategories (CategoryID, Name, Image) VALUES (?, ?, ?)",
-      [pantCatId, "Formal", ""],
-    );
-    const casualPantSub = await dbRun(
-      "INSERT INTO subcategories (CategoryID, Name, Image) VALUES (?, ?, ?)",
-      [pantCatId, "Casual", ""],
-    );
-    const casualShirtSub = await dbRun(
-      "INSERT INTO subcategories (CategoryID, Name, Image) VALUES (?, ?, ?)",
-      [shirtCatId, "Casual", ""],
-    );
-    const formalShirtSub = await dbRun(
-      "INSERT INTO subcategories (CategoryID, Name, Image) VALUES (?, ?, ?)",
-      [shirtCatId, "Formal", ""],
-    );
-
-    const leatherSubId = leatherSub.id;
-    const denimSubId = denimSub.id;
-    const formalPantSubId = formalPantSub.id;
-    const casualPantSubId = casualPantSub.id;
-    const casualShirtSubId = casualShirtSub.id;
-    const formalShirtSubId = formalShirtSub.id;
-
-    // Items
-    await dbRun(
-      "INSERT INTO items (CategoryID, SubcatID, Name, UnitPrice, Notes) VALUES (?, ?, ?, ?, ?)",
-      [
-        jacketCatId,
-        leatherSubId,
-        "Black Leather Jacket",
-        120.0,
-        "Premium full-grain leather",
-      ],
-    );
-    await dbRun(
-      "INSERT INTO items (CategoryID, SubcatID, Name, UnitPrice, Notes) VALUES (?, ?, ?, ?, ?)",
-      [
-        jacketCatId,
-        leatherSubId,
-        "Brown Leather Jacket",
-        115.0,
-        "Vintage style",
-      ],
-    );
-    await dbRun(
-      "INSERT INTO items (CategoryID, SubcatID, Name, UnitPrice, Notes) VALUES (?, ?, ?, ?, ?)",
-      [jacketCatId, denimSubId, "Blue Denim Jacket", 80.0, "Classic fit"],
-    );
-    await dbRun(
-      "INSERT INTO items (CategoryID, SubcatID, Name, UnitPrice, Notes) VALUES (?, ?, ?, ?, ?)",
-      [pantCatId, formalPantSubId, "Black Dress Pants", 90.0, "Slim cut"],
-    );
-    await dbRun(
-      "INSERT INTO items (CategoryID, SubcatID, Name, UnitPrice, Notes) VALUES (?, ?, ?, ?, ?)",
-      [pantCatId, formalPantSubId, "Navy Dress Pants", 85.0, "Regular fit"],
-    );
-    await dbRun(
-      "INSERT INTO items (CategoryID, SubcatID, Name, UnitPrice, Notes) VALUES (?, ?, ?, ?, ?)",
-      [pantCatId, casualPantSubId, "Khaki Chinos", 65.0, ""],
-    );
-    await dbRun(
-      "INSERT INTO items (CategoryID, SubcatID, Name, UnitPrice, Notes) VALUES (?, ?, ?, ?, ?)",
-      [shirtCatId, formalShirtSubId, "White Dress Shirt", 55.0, "French cuff"],
-    );
-    await dbRun(
-      "INSERT INTO items (CategoryID, SubcatID, Name, UnitPrice, Notes) VALUES (?, ?, ?, ?, ?)",
-      [
-        shirtCatId,
-        casualShirtSubId,
-        "Oxford Shirt",
-        45.0,
-        "Button-down collar",
-      ],
-    );
-
-    // Customers
-    await dbRun(
-      "INSERT INTO customers (Name, Phone, Email, Address) VALUES (?, ?, ?, ?)",
-      ["Alice Smith", "555-0101", "alice@example.com", "123 Main St"],
-    );
-    await dbRun(
-      "INSERT INTO customers (Name, Phone, Email, Address) VALUES (?, ?, ?, ?)",
-      ["Bob Johnson", "555-0102", "bob@example.com", "456 Oak Ave"],
-    );
-    await dbRun(
-      "INSERT INTO customers (Name, Phone, Email, Address) VALUES (?, ?, ?, ?)",
-      ["Carol White", "555-0103", "carol@example.com", "789 Pine Rd"],
-    );
-    await dbRun(
-      "INSERT INTO customers (Name, Phone, Email, Address) VALUES (?, ?, ?, ?)",
-      ["David Brown", "555-0104", "david@example.com", "321 Elm St"],
-    );
-    await dbRun(
-      "INSERT INTO customers (Name, Phone, Email, Address) VALUES (?, ?, ?, ?)",
-      ["Emma Davis", "555-0105", "emma@example.com", "654 Maple Dr"],
-    );
 
     console.log("Database seeded successfully.");
   }
@@ -475,7 +619,7 @@ async function initDb() {
 
 // Status check endpoint
 app.get("/api/status", (req, res) => {
-  res.json({ status: "ok", time: new Date().toISOString() });
+  res.json({ status: "ok", time: bangkokNowIso() });
 });
 
 // Customers CRUD
@@ -501,12 +645,12 @@ app.get("/api/customers/:id", async (req, res) => {
 });
 
 app.post("/api/customers", async (req, res) => {
-  const { Name, Phone, Email, Address } = req.body;
+  const { Name, Phone, Email, Address, Image } = req.body;
   if (!Name) return res.status(400).json({ message: "Name is required" });
   try {
     const result = await dbRun(
-      "INSERT INTO customers (Name, Phone, Email, Address) VALUES (?, ?, ?, ?)",
-      [Name, Phone, Email, Address],
+      "INSERT INTO customers (Name, Phone, Email, Address, Image) VALUES (?, ?, ?, ?, ?)",
+      [Name, Phone, Email, Address, Image || null],
     );
     res.status(201).json(result.id);
   } catch (err) {
@@ -515,12 +659,12 @@ app.post("/api/customers", async (req, res) => {
 });
 
 app.put("/api/customers/:id", async (req, res) => {
-  const { Name, Phone, Email, Address } = req.body;
+  const { Name, Phone, Email, Address, Image } = req.body;
   if (!Name) return res.status(400).json({ message: "Name is required" });
   try {
     const result = await dbRun(
-      "UPDATE customers SET Name = ?, Phone = ?, Email = ?, Address = ? WHERE CustomerID = ?",
-      [Name, Phone, Email, Address, req.params.id],
+      "UPDATE customers SET Name = ?, Phone = ?, Email = ?, Address = ?, Image = ? WHERE CustomerID = ?",
+      [Name, Phone, Email, Address, Image || null, req.params.id],
     );
     if (result.changes === 0)
       return res.status(404).json({ message: "Customer not found" });
@@ -529,6 +673,18 @@ app.put("/api/customers/:id", async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
+// Endpoint to upload a customer image
+app.post(
+  "/api/customers/upload",
+  uploadCustomer.single("image"),
+  (req, res) => {
+    if (!req.file)
+      return res.status(400).json({ message: "No file uploaded." });
+    const filePath = `/uploads/customer-images/${req.file.filename}`;
+    res.json({ filePath });
+  },
+);
 
 app.delete("/api/customers/:id", async (req, res) => {
   try {
@@ -783,25 +939,83 @@ app.get("/api/orders/:id", async (req, res) => {
 });
 
 app.post("/api/orders", async (req, res) => {
-  const { CustomerID, UserID, OrderDate, TotalAmount } = req.body;
+  const {
+    OrderID,
+    CustomerID,
+    UserID,
+    OrderDate,
+    CreatedAt,
+    TotalAmount,
+    PaymentMethod,
+    Deposit,
+    Discount,
+    RemainingBalance,
+    TransactionFee,
+  } = req.body;
   if (!CustomerID || !UserID || !OrderDate || TotalAmount === undefined) {
     return res.status(400).json({
       message: "CustomerID, UserID, OrderDate, and TotalAmount are required",
     });
   }
+  if (OrderID != null && (!Number.isInteger(OrderID) || OrderID <= 0)) {
+    return res.status(400).json({
+      message: "OrderID must be a positive whole number",
+    });
+  }
   try {
+    if (OrderID != null) {
+      const existing = await dbGet(
+        "SELECT OrderID FROM orders WHERE OrderID = ?",
+        [OrderID],
+      );
+      if (existing) {
+        return res.status(409).json({
+          message: `Order ID ${OrderID} already exists`,
+        });
+      }
+    }
+
+    const createdAt = CreatedAt || bangkokNowIso();
     const result = await dbRun(
-      "INSERT INTO orders (CustomerID, UserID, OrderDate, TotalAmount) VALUES (?, ?, ?, ?)",
-      [CustomerID, UserID, OrderDate, TotalAmount],
+      "INSERT INTO orders (OrderID, CustomerID, UserID, OrderDate, CreatedAt, TotalAmount, PaymentMethod, Deposit, Discount, RemainingBalance, TransactionFee) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      [
+        OrderID != null ? OrderID : null,
+        CustomerID,
+        UserID,
+        OrderDate,
+        createdAt,
+        TotalAmount,
+        PaymentMethod || "Cash",
+        Deposit || 0,
+        Discount || 0,
+        RemainingBalance || 0,
+        TransactionFee || 0,
+      ],
     );
-    res.status(201).json(result.id);
+    res.status(201).json(OrderID != null ? OrderID : result.id);
   } catch (err) {
+    if (/UNIQUE constraint failed: orders\.OrderID/.test(err.message)) {
+      return res.status(409).json({
+        message: `Order ID ${OrderID} already exists`,
+      });
+    }
     res.status(500).json({ message: err.message });
   }
 });
 
 app.put("/api/orders/:id", async (req, res) => {
-  const { CustomerID, UserID, OrderDate, TotalAmount } = req.body;
+  const {
+    CustomerID,
+    UserID,
+    OrderDate,
+    CreatedAt,
+    TotalAmount,
+    PaymentMethod,
+    Deposit,
+    Discount,
+    RemainingBalance,
+    TransactionFee,
+  } = req.body;
   if (!CustomerID || !UserID || !OrderDate || TotalAmount === undefined) {
     return res.status(400).json({
       message: "CustomerID, UserID, OrderDate, and TotalAmount are required",
@@ -809,8 +1023,19 @@ app.put("/api/orders/:id", async (req, res) => {
   }
   try {
     const result = await dbRun(
-      "UPDATE orders SET CustomerID = ?, UserID = ?, OrderDate = ?, TotalAmount = ? WHERE OrderID = ?",
-      [CustomerID, UserID, OrderDate, TotalAmount, req.params.id],
+      "UPDATE orders SET CustomerID = ?, UserID = ?, OrderDate = ?, TotalAmount = ?, PaymentMethod = ?, Deposit = ?, Discount = ?, RemainingBalance = ?, TransactionFee = ? WHERE OrderID = ?",
+      [
+        CustomerID,
+        UserID,
+        OrderDate,
+        TotalAmount,
+        PaymentMethod || "Cash",
+        Deposit || 0,
+        Discount || 0,
+        RemainingBalance || 0,
+        TransactionFee || 0,
+        req.params.id,
+      ],
     );
     if (result.changes === 0)
       return res.status(404).json({ message: "Order not found" });
@@ -865,6 +1090,10 @@ app.post("/api/orderlines", async (req, res) => {
     Quantity,
     UnitPrice,
     LineTotal,
+    FabricID,
+    UseCount,
+    FabricUnit,
+    TailorFees,
   } = req.body;
   if (
     !OrderID ||
@@ -878,7 +1107,7 @@ app.post("/api/orderlines", async (req, res) => {
   }
   try {
     const result = await dbRun(
-      "INSERT INTO orderlines (OrderID, ItemID, CategoryID, SubcatID, Description, Quantity, UnitPrice, LineTotal) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO orderlines (OrderID, ItemID, CategoryID, SubcatID, Description, Quantity, UnitPrice, LineTotal, FabricID, UseCount, FabricUnit, TailorFees) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       [
         OrderID,
         ItemID || null,
@@ -888,8 +1117,25 @@ app.post("/api/orderlines", async (req, res) => {
         Quantity,
         UnitPrice,
         LineTotal,
+        FabricID || null,
+        UseCount == null ? null : UseCount,
+        FabricUnit || null,
+        TailorFees == null ? 0 : TailorFees,
       ],
     );
+
+    // Decrement fabric inventory count when a fabric is consumed
+    if (FabricID && UseCount && UseCount > 0) {
+      try {
+        await dbRun(
+          "UPDATE fabric_inventory SET Count = MAX(0, Count - ?) WHERE FabricID = ?",
+          [UseCount, FabricID],
+        );
+      } catch (invErr) {
+        console.error("Failed to decrement fabric count:", invErr.message);
+      }
+    }
+
     res.status(201).json(result.id);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -906,6 +1152,10 @@ app.put("/api/orderlines/:id", async (req, res) => {
     Quantity,
     UnitPrice,
     LineTotal,
+    FabricID,
+    UseCount,
+    FabricUnit,
+    TailorFees,
   } = req.body;
   if (
     !OrderID ||
@@ -919,7 +1169,7 @@ app.put("/api/orderlines/:id", async (req, res) => {
   }
   try {
     const result = await dbRun(
-      "UPDATE orderlines SET OrderID = ?, ItemID = ?, CategoryID = ?, SubcatID = ?, Description = ?, Quantity = ?, UnitPrice = ?, LineTotal = ? WHERE LineID = ?",
+      "UPDATE orderlines SET OrderID = ?, ItemID = ?, CategoryID = ?, SubcatID = ?, Description = ?, Quantity = ?, UnitPrice = ?, LineTotal = ?, FabricID = ?, UseCount = ?, FabricUnit = ?, TailorFees = ? WHERE LineID = ?",
       [
         OrderID,
         ItemID || null,
@@ -929,6 +1179,10 @@ app.put("/api/orderlines/:id", async (req, res) => {
         Quantity,
         UnitPrice,
         LineTotal,
+        FabricID || null,
+        UseCount == null ? null : UseCount,
+        FabricUnit || null,
+        TailorFees == null ? 0 : TailorFees,
         req.params.id,
       ],
     );
@@ -954,8 +1208,25 @@ app.delete("/api/orderlines/:id", async (req, res) => {
 });
 
 // Additional OrderLines delete helper by OrderID
+// Restores consumed fabric counts back to inventory before removing the lines.
 app.delete("/api/orderlines/order/:orderId", async (req, res) => {
   try {
+    // Return fabric that was consumed by these lines back to stock
+    const lines = await dbAll(
+      "SELECT FabricID, UseCount FROM orderlines WHERE OrderID = ? AND FabricID IS NOT NULL AND UseCount IS NOT NULL AND UseCount > 0",
+      [req.params.orderId],
+    );
+    for (const l of lines) {
+      try {
+        await dbRun(
+          "UPDATE fabric_inventory SET Count = Count + ? WHERE FabricID = ?",
+          [l.UseCount, l.FabricID],
+        );
+      } catch (invErr) {
+        console.error("Failed to restore fabric count:", invErr.message);
+      }
+    }
+
     await dbRun("DELETE FROM orderlines WHERE OrderID = ?", [
       req.params.orderId,
     ]);
@@ -1058,21 +1329,607 @@ app.get("/api/auditlog", async (req, res) => {
 
 app.post("/api/auditlog", async (req, res) => {
   const { UserID, Action, Timestamp, Details } = req.body;
-  if (!Action || !Timestamp) {
-    return res
-      .status(400)
-      .json({ message: "Action and Timestamp are required" });
+  const createdTimestamp = Timestamp || bangkokNowIso();
+  if (!Action) {
+    return res.status(400).json({ message: "Action is required" });
   }
   try {
     const result = await dbRun(
       "INSERT INTO auditlog (UserID, Action, Timestamp, Details) VALUES (?, ?, ?, ?)",
-      [UserID, Action, Timestamp, Details],
+      [UserID, Action, createdTimestamp, Details],
     );
     res.status(201).json(result.id);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
+
+// Fabric Inventory CRUD
+app.get("/api/inventory", async (req, res) => {
+  try {
+    const list = await dbAll(
+      "SELECT * FROM fabric_inventory ORDER BY FabricID DESC",
+    );
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.get("/api/inventory/:id", async (req, res) => {
+  try {
+    const row = await dbGet(
+      "SELECT * FROM fabric_inventory WHERE FabricID = ?",
+      [req.params.id],
+    );
+    if (!row) return res.status(404).json({ message: "Fabric not found" });
+    res.json(row);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.post("/api/inventory", async (req, res) => {
+  const { Name, Code, Color, Count, Unit, Price, Remark } = req.body;
+  if (!Name) return res.status(400).json({ message: "Name is required" });
+  if (!Color) return res.status(400).json({ message: "Color is required" });
+  if (Count == null)
+    return res.status(400).json({ message: "Count is required" });
+  if (Price == null)
+    return res.status(400).json({ message: "Price is required" });
+  try {
+    const createdAt = bangkokNowIso();
+    const result = await dbRun(
+      "INSERT INTO fabric_inventory (Name, Code, Color, Count, Unit, Price, Remark, CreatedAt, UpdatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      [
+        Name,
+        Code || null,
+        Color,
+        Count,
+        Unit || "yards",
+        Price,
+        Remark || null,
+        createdAt,
+        createdAt,
+      ],
+    );
+    res.status(201).json(result.id);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.put("/api/inventory/:id", async (req, res) => {
+  const { Name, Code, Color, Count, Unit, Price, Remark } = req.body;
+  if (!Name) return res.status(400).json({ message: "Name is required" });
+  if (!Color) return res.status(400).json({ message: "Color is required" });
+  if (Count == null)
+    return res.status(400).json({ message: "Count is required" });
+  if (Price == null)
+    return res.status(400).json({ message: "Price is required" });
+  try {
+    const updatedAt = bangkokNowIso();
+    const result = await dbRun(
+      "UPDATE fabric_inventory SET Name = ?, Code = ?, Color = ?, Count = ?, Unit = ?, Price = ?, Remark = ?, UpdatedAt = ? WHERE FabricID = ?",
+      [
+        Name,
+        Code || null,
+        Color,
+        Count,
+        Unit || "yards",
+        Price,
+        Remark || null,
+        updatedAt,
+        req.params.id,
+      ],
+    );
+    if (result.changes === 0)
+      return res.status(404).json({ message: "Fabric not found" });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.delete("/api/inventory/:id", async (req, res) => {
+  try {
+    const result = await dbRun(
+      "DELETE FROM fabric_inventory WHERE FabricID = ?",
+      [req.params.id],
+    );
+    if (result.changes === 0)
+      return res.status(404).json({ message: "Fabric not found" });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ═══ Expenses CRUD ═══════════════════════════════════════════════════
+app.get("/api/expenses", async (req, res) => {
+  try {
+    const list = await dbAll("SELECT * FROM expenses ORDER BY ExpenseID DESC");
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.get("/api/expenses/:id", async (req, res) => {
+  try {
+    const row = await dbGet("SELECT * FROM expenses WHERE ExpenseID = ?", [
+      req.params.id,
+    ]);
+    if (!row) return res.status(404).json({ message: "Expense not found" });
+    res.json(row);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.post("/api/expenses", async (req, res) => {
+  const { ExpenseDate, Name, Amount, Remark } = req.body;
+  if (!ExpenseDate)
+    return res.status(400).json({ message: "ExpenseDate is required" });
+  if (!Name) return res.status(400).json({ message: "Name is required" });
+  if (Amount == null)
+    return res.status(400).json({ message: "Amount is required" });
+  try {
+    const createdAt = bangkokNowIso();
+    const result = await dbRun(
+      "INSERT INTO expenses (ExpenseDate, Name, Amount, Remark, CreatedAt, UpdatedAt) VALUES (?, ?, ?, ?, ?, ?)",
+      [ExpenseDate, Name, Amount, Remark || null, createdAt, createdAt],
+    );
+    res.status(201).json(result.id);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.put("/api/expenses/:id", async (req, res) => {
+  const { ExpenseDate, Name, Amount, Remark } = req.body;
+  if (!ExpenseDate)
+    return res.status(400).json({ message: "ExpenseDate is required" });
+  if (!Name) return res.status(400).json({ message: "Name is required" });
+  if (Amount == null)
+    return res.status(400).json({ message: "Amount is required" });
+  try {
+    const updatedAt = bangkokNowIso();
+    const result = await dbRun(
+      "UPDATE expenses SET ExpenseDate = ?, Name = ?, Amount = ?, Remark = ?, UpdatedAt = ? WHERE ExpenseID = ?",
+      [ExpenseDate, Name, Amount, Remark || null, updatedAt, req.params.id],
+    );
+    if (result.changes === 0)
+      return res.status(404).json({ message: "Expense not found" });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.delete("/api/expenses/:id", async (req, res) => {
+  try {
+    const result = await dbRun("DELETE FROM expenses WHERE ExpenseID = ?", [
+      req.params.id,
+    ]);
+    if (result.changes === 0)
+      return res.status(404).json({ message: "Expense not found" });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── Fabric Sales Endpoints ────────────────────────────────────────
+app.get("/api/fabric-sales", async (req, res) => {
+  try {
+    const list = await dbAll(`
+      SELECT fs.*, fi.Name AS FabricName, fi.Code AS FabricCode, fi.Color AS FabricColor, fi.Unit AS FabricUnit 
+      FROM fabric_sales fs 
+      JOIN fabric_inventory fi ON fs.FabricID = fi.FabricID 
+      ORDER BY fs.SaleID DESC
+    `);
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.post("/api/fabric-sales", async (req, res) => {
+  const { SaleDate, FabricID, Quantity, UnitPrice, SellingPrice, TotalAmount } = req.body;
+  if (!SaleDate) return res.status(400).json({ message: "SaleDate is required" });
+  if (!FabricID) return res.status(400).json({ message: "FabricID is required" });
+  if (Quantity == null || Quantity <= 0) return res.status(400).json({ message: "Valid Quantity is required" });
+  if (SellingPrice == null) return res.status(400).json({ message: "SellingPrice is required" });
+
+  try {
+    const fabric = await dbGet("SELECT Count, Name FROM fabric_inventory WHERE FabricID = ?", [FabricID]);
+    if (!fabric) return res.status(404).json({ message: "Fabric not found in inventory" });
+    if (fabric.Count < Quantity) {
+      return res.status(400).json({ message: `Insufficient inventory for ${fabric.Name}. Available: ${fabric.Count}` });
+    }
+
+    const now = bangkokNowIso();
+    // Decrement fabric count
+    await dbRun("UPDATE fabric_inventory SET Count = Count - ?, UpdatedAt = ? WHERE FabricID = ?", [Quantity, now, FabricID]);
+    
+    // Log the sale
+    const result = await dbRun(`
+      INSERT INTO fabric_sales (SaleDate, FabricID, Quantity, UnitPrice, SellingPrice, TotalAmount, CreatedAt) 
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `, [SaleDate, FabricID, Quantity, UnitPrice || 0, SellingPrice, TotalAmount, now]);
+
+    res.status(201).json(result.id);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.delete("/api/fabric-sales/:id", async (req, res) => {
+  try {
+    const sale = await dbGet("SELECT FabricID, Quantity FROM fabric_sales WHERE SaleID = ?", [req.params.id]);
+    if (!sale) return res.status(404).json({ message: "Sale not found" });
+
+    const now = bangkokNowIso();
+    // Restore fabric stock
+    await dbRun("UPDATE fabric_inventory SET Count = Count + ?, UpdatedAt = ? WHERE FabricID = ?", [sale.Quantity, now, sale.FabricID]);
+    await dbRun("DELETE FROM fabric_sales WHERE SaleID = ?", [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── Ready Made Products Endpoints ──────────────────────────────────
+app.get("/api/ready-made-products", async (req, res) => {
+  try {
+    const list = await dbAll(`
+      SELECT rmp.*, fi.Name AS FabricName, fi.Code AS FabricCode, fi.Unit AS FabricUnit
+      FROM ready_made_products rmp
+      LEFT JOIN fabric_inventory fi ON rmp.FabricID = fi.FabricID
+      ORDER BY rmp.ProductID DESC
+    `);
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.get("/api/ready-made-products/:id", async (req, res) => {
+  try {
+    const row = await dbGet(`
+      SELECT rmp.*, fi.Name AS FabricName, fi.Code AS FabricCode, fi.Unit AS FabricUnit
+      FROM ready_made_products rmp
+      LEFT JOIN fabric_inventory fi ON rmp.FabricID = fi.FabricID
+      WHERE rmp.ProductID = ?
+    `, [req.params.id]);
+    if (!row) return res.status(404).json({ message: "Product not found" });
+    res.json(row);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.post("/api/ready-made-products", async (req, res) => {
+  const { Name, Category, Type, Size, Cost, FabricID, FabricQtyUsed, Color, Count, SellingPrice, TailorFees } = req.body;
+  if (!Name) return res.status(400).json({ message: "Name is required" });
+  if (!Category) return res.status(400).json({ message: "Category is required" });
+  if (Count == null || Count < 0) return res.status(400).json({ message: "Count is required" });
+  if (SellingPrice == null) return res.status(400).json({ message: "Selling Price is required" });
+
+  try {
+    const now = bangkokNowIso();
+
+    // If fabric is chosen, check and subtract from inventory
+    if (FabricID && FabricQtyUsed > 0 && Count > 0) {
+      const fabric = await dbGet("SELECT Count, Name FROM fabric_inventory WHERE FabricID = ?", [FabricID]);
+      if (!fabric) return res.status(404).json({ message: "Selected Fabric not found in inventory" });
+      const totalFabricNeeded = FabricQtyUsed * Count;
+      if (fabric.Count < totalFabricNeeded) {
+        return res.status(400).json({ message: `Insufficient inventory for ${fabric.Name}. Needed: ${totalFabricNeeded}, Available: ${fabric.Count}` });
+      }
+      await dbRun("UPDATE fabric_inventory SET Count = Count - ?, UpdatedAt = ? WHERE FabricID = ?", [totalFabricNeeded, now, FabricID]);
+    }
+
+    const result = await dbRun(`
+      INSERT INTO ready_made_products (Name, Category, Type, Size, Cost, FabricID, FabricQtyUsed, Color, Count, SellingPrice, TailorFees, CreatedAt, UpdatedAt) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [Name, Category, Type || null, Size || "", Cost || 0, FabricID || null, FabricQtyUsed || 0, Color || null, Count, SellingPrice, TailorFees || 0, now, now]);
+
+    res.status(201).json(result.id);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.put("/api/ready-made-products/:id", async (req, res) => {
+  const { Name, Category, Type, Size, Cost, FabricID, FabricQtyUsed, Color, Count, SellingPrice, TailorFees } = req.body;
+  if (!Name) return res.status(400).json({ message: "Name is required" });
+  if (!Category) return res.status(400).json({ message: "Category is required" });
+  if (Count == null || Count < 0) return res.status(400).json({ message: "Count is required" });
+  if (SellingPrice == null) return res.status(400).json({ message: "Selling Price is required" });
+
+  try {
+    const now = bangkokNowIso();
+    // Standard metadata update. We don't perform retroactive fabric corrections to avoid data loops,
+    // but we update the product state.
+    const result = await dbRun(`
+      UPDATE ready_made_products 
+      SET Name = ?, Category = ?, Type = ?, Size = ?, Cost = ?, FabricID = ?, FabricQtyUsed = ?, Color = ?, Count = ?, SellingPrice = ?, TailorFees = ?, UpdatedAt = ?
+      WHERE ProductID = ?
+    `, [Name, Category, Type || null, Size || "", Cost || 0, FabricID || null, FabricQtyUsed || 0, Color || null, Count, SellingPrice, TailorFees || 0, now, req.params.id]);
+
+    if (result.changes === 0) return res.status(404).json({ message: "Product not found" });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.delete("/api/ready-made-products/:id", async (req, res) => {
+  try {
+    const result = await dbRun("DELETE FROM ready_made_products WHERE ProductID = ?", [req.params.id]);
+    if (result.changes === 0) return res.status(404).json({ message: "Product not found" });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── Ready Made Sales Endpoints ─────────────────────────────────────
+app.get("/api/ready-made-sales", async (req, res) => {
+  try {
+    const list = await dbAll(`
+      SELECT rms.*, rmp.Name AS ProductName, rmp.Category AS ProductCategory, rmp.Size AS ProductSize,
+             rmp.FabricID AS ProductFabricID, rmp.FabricQtyUsed AS ProductFabricQtyUsed,
+             rmp.TailorFees AS ProductTailorFees, fi.Price AS FabricPrice
+      FROM ready_made_sales rms
+      JOIN ready_made_products rmp ON rms.ProductID = rmp.ProductID
+      LEFT JOIN fabric_inventory fi ON rmp.FabricID = fi.FabricID
+      ORDER BY rms.SaleID DESC
+    `);
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.post("/api/ready-made-sales", async (req, res) => {
+  const { ProductID, SaleDate, Quantity, SellingPrice, TotalAmount } = req.body;
+  if (!ProductID) return res.status(400).json({ message: "ProductID is required" });
+  if (!SaleDate) return res.status(400).json({ message: "SaleDate is required" });
+  if (Quantity == null || Quantity <= 0) return res.status(400).json({ message: "Valid Quantity is required" });
+  if (SellingPrice == null) return res.status(400).json({ message: "Selling Price is required" });
+
+  try {
+    const product = await dbGet("SELECT Count, Name FROM ready_made_products WHERE ProductID = ?", [ProductID]);
+    if (!product) return res.status(404).json({ message: "Product not found" });
+    if (product.Count < Quantity) {
+      return res.status(400).json({ message: `Insufficient stock for ${product.Name}. Available: ${product.Count}` });
+    }
+
+    const now = bangkokNowIso();
+    // Decrement product count
+    await dbRun("UPDATE ready_made_products SET Count = Count - ?, UpdatedAt = ? WHERE ProductID = ?", [Quantity, now, ProductID]);
+    
+    // Log the sale
+    const result = await dbRun(`
+      INSERT INTO ready_made_sales (ProductID, SaleDate, Quantity, SellingPrice, TotalAmount, CreatedAt)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `, [ProductID, SaleDate, Quantity, SellingPrice, TotalAmount, now]);
+
+    res.status(201).json(result.id);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.delete("/api/ready-made-sales/:id", async (req, res) => {
+  try {
+    const sale = await dbGet("SELECT ProductID, Quantity FROM ready_made_sales WHERE SaleID = ?", [req.params.id]);
+    if (!sale) return res.status(404).json({ message: "Sale not found" });
+
+    const now = bangkokNowIso();
+    await dbRun("UPDATE ready_made_products SET Count = Count + ?, UpdatedAt = ? WHERE ProductID = ?", [sale.Quantity, now, sale.ProductID]);
+    await dbRun("DELETE FROM ready_made_sales WHERE SaleID = ?", [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Backup endpoint – creates a zip with database, images, inventory, and expenses
+app.get("/api/backup", async (req, res) => {
+  try {
+    // Create backup zip file
+    const backupDir = path.join(DATA_DIR, "backups");
+    if (!fs.existsSync(backupDir)) {
+      fs.mkdirSync(backupDir, { recursive: true });
+    }
+
+    const timestamp = new Date()
+      .toISOString()
+      .replace(/[^0-9]/g, "")
+      .slice(0, 14);
+    const backupZipPath = path.join(backupDir, `${timestamp}_backup.zip`);
+    const output = fs.createWriteStream(backupZipPath);
+    const archive = archiver("zip", {
+      zlib: { level: 9 }, // Maximum compression
+    });
+
+    // Listen for all archive data to be written
+    output.on("close", () => {
+      console.log(
+        `Backup created: ${backupZipPath} (${archive.pointer()} bytes)`,
+      );
+      res.download(backupZipPath, `${timestamp}_backup.zip`, (err) => {
+        if (err) console.error("Download error:", err);
+        // Optional: Clean up old backups (keep only last 10)
+        cleanupOldBackups(backupDir, 10);
+      });
+    });
+
+    archive.on("error", (err) => {
+      console.error("Archive error:", err);
+      res
+        .status(500)
+        .json({ message: "Backup creation failed: " + err.message });
+    });
+
+    // Pipe archive data to the file
+    archive.pipe(output);
+
+    // Add the SQLite database. It contains customers, orders, inventory, expenses, and audit log data.
+    const dbPath = path.join(DATA_DIR, "beskpoke.db");
+    if (fs.existsSync(dbPath)) {
+      archive.file(dbPath, { name: "beskpoke.db" });
+    }
+
+    // Add all uploaded assets, including customer images under uploads/customer-images.
+    const uploadsPath = uploadDir;
+    if (fs.existsSync(uploadsPath)) {
+      archive.directory(uploadsPath, "uploads");
+    }
+
+    // Finalize the archive
+    await archive.finalize();
+  } catch (err) {
+    console.error("Backup error:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Helper function to clean up old backups
+function cleanupOldBackups(backupDir, keepCount) {
+  try {
+    const files = fs
+      .readdirSync(backupDir)
+      .filter((f) => f.endsWith("_backup.zip") || f.startsWith("backup-"))
+      .map((f) => ({
+        name: f,
+        time: fs.statSync(path.join(backupDir, f)).mtime.getTime(),
+      }))
+      .sort((a, b) => b.time - a.time);
+
+    // Delete older backups
+    for (let i = keepCount; i < files.length; i++) {
+      fs.unlinkSync(path.join(backupDir, files[i].name));
+      console.log(`Deleted old backup: ${files[i].name}`);
+    }
+  } catch (err) {
+    console.warn("Cleanup error:", err.message);
+  }
+}
+
+async function restoreDatabaseFromBackup(backupDbPath) {
+  await closeDatabase();
+  fs.copyFileSync(backupDbPath, dbPath);
+  await openDatabase(false);
+  await dbRun("PRAGMA foreign_keys = ON;");
+}
+
+function clearDirectory(dir) {
+  if (!fs.existsSync(dir)) return;
+  for (const entry of fs.readdirSync(dir)) {
+    const entryPath = path.join(dir, entry);
+    const stat = fs.statSync(entryPath);
+    if (stat.isDirectory()) {
+      fs.rmSync(entryPath, { recursive: true, force: true });
+    } else {
+      fs.unlinkSync(entryPath);
+    }
+  }
+}
+
+function copyDirectoryContents(srcDir, destDir) {
+  if (!fs.existsSync(srcDir)) return;
+  if (!fs.existsSync(destDir)) {
+    fs.mkdirSync(destDir, { recursive: true });
+  }
+
+  for (const entry of fs.readdirSync(srcDir)) {
+    const srcPath = path.join(srcDir, entry);
+    const destPath = path.join(destDir, entry);
+    const stat = fs.statSync(srcPath);
+
+    if (stat.isDirectory()) {
+      copyDirectoryContents(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}
+
+function restoreImageFoldersFromBackup(extractedDir) {
+  const restoredUploadsDir = path.join(extractedDir, "uploads");
+  const legacyCustomerImagesDir = path.join(extractedDir, "customer-images");
+
+  const hasUploads = fs.existsSync(restoredUploadsDir);
+  const hasLegacyCustomerImages = fs.existsSync(legacyCustomerImagesDir);
+
+  if (!hasUploads && !hasLegacyCustomerImages) {
+    return;
+  }
+
+  clearDirectory(uploadDir);
+
+  if (hasUploads) {
+    copyDirectoryContents(restoredUploadsDir, uploadDir);
+  }
+
+  if (hasLegacyCustomerImages) {
+    copyDirectoryContents(legacyCustomerImagesDir, customerImagesDir);
+  }
+}
+
+app.post(
+  "/api/restore",
+  restoreUpload.single("backupFile"),
+  async (req, res) => {
+    let extractedDir = null;
+
+    try {
+      if (!req.file) {
+        return res
+          .status(400)
+          .json({ message: "Backup zip file is required." });
+      }
+
+      extractedDir = path.join(DATA_DIR, `restore-temp-${Date.now()}`);
+      fs.mkdirSync(extractedDir, { recursive: true });
+
+      const zip = new AdmZip(req.file.path);
+      zip.extractAllTo(extractedDir, true);
+
+      const restoredDbPath = path.join(extractedDir, "beskpoke.db");
+      if (!fs.existsSync(restoredDbPath)) {
+        return res.status(400).json({
+          message: "Invalid backup zip. beskpoke.db was not found.",
+        });
+      }
+
+      await restoreDatabaseFromBackup(restoredDbPath);
+
+      restoreImageFoldersFromBackup(extractedDir);
+
+      res.json({ success: true, message: "Backup restored successfully." });
+    } catch (err) {
+      console.error("Restore error:", err);
+      res.status(500).json({ message: err.message || "Restore failed." });
+    } finally {
+      try {
+        if (req.file?.path && fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
+        if (extractedDir && fs.existsSync(extractedDir)) {
+          fs.rmSync(extractedDir, { recursive: true, force: true });
+        }
+      } catch (cleanupErr) {
+        console.warn("Restore cleanup warning:", cleanupErr.message);
+      }
+    }
+  },
+);
 
 // Catch-all route to serve index.html for UI SPA routing, if any
 app.get(/^(?!\/api).*/, (req, res) => {

@@ -56,23 +56,15 @@ Section "Install"
   File "index.html"
   File "server.js"
   File "package.json"
+  File "logo.png"
   
   ; Copy pre-installed node_modules
   SetOutPath "$INSTDIR\node_modules"
   File /r "node_modules\*.*"
   
-  ; Check if bundled Node.js exists and copy it
-  IfFileExists "bin\node-portable\*.*" HasNodePortable NoNodePortable
-  
-  HasNodePortable:
-    SetOutPath "$INSTDIR\node-portable"
-    File /r "bin\node-portable\*.*"
-    GoTo DoneNode
-  
-  NoNodePortable:
-    ; No bundled Node.js - user must have it installed
-  
-  DoneNode:
+  ; Copy bundled Node.js if it exists
+  SetOutPath "$INSTDIR\node-portable"
+  File /nonfatal /r "bin\node-portable\*.*"
   
   ; Set icon OutPath
   SetOutPath "$INSTDIR"

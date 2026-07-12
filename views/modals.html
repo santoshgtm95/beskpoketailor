@@ -46,6 +46,63 @@
           <label>Address</label
           ><input type="text" id="cust-address" placeholder="Street address" />
         </div>
+        <div class="form-group">
+          <label>Customer Photo</label>
+          <input
+            type="file"
+            id="cust-image-file"
+            accept="image/*"
+            style="display: none"
+          />
+          <input type="hidden" id="cust-image-url" />
+          <div
+            style="
+              display: flex;
+              align-items: center;
+              gap: 12px;
+              margin-top: 6px;
+            "
+          >
+            <button
+              type="button"
+              class="btn btn-ghost btn-sm"
+              onclick="document.getElementById('cust-image-file').click()"
+              style="padding: 6px 12px; font-size: 12px"
+            >
+              🖼️ Choose Photo…
+            </button>
+            <span
+              id="cust-image-filename"
+              class="text-muted"
+              style="
+                font-size: 11px;
+                max-width: 150px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+              "
+              >No photo chosen</span
+            >
+          </div>
+          <div
+            id="cust-image-preview-wrap"
+            style="display: none; margin-top: 10px"
+          >
+            <img
+              id="cust-image-preview"
+              src=""
+              alt="Preview"
+              style="
+                width: 80px;
+                height: 80px;
+                object-fit: cover;
+                border-radius: 50%;
+                border: 1px solid var(--border);
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+              "
+            />
+          </div>
+        </div>
       </form>
     </div>
     <div class="modal-footer">
@@ -61,7 +118,7 @@
 
 <!-- Edit Customer (Customers Page) -->
 <div class="modal-overlay" id="modal-edit-customer">
-  <div class="modal modal-sm">
+  <div class="modal modal-custmore">
     <div class="modal-header">
       <h3 id="customer-modal-title">Customer</h3>
       <button
@@ -88,6 +145,63 @@
         <div class="form-group">
           <label>Address</label><input type="text" id="cm-address" />
         </div>
+        <div class="form-group">
+          <label>Customer Photo</label>
+          <input
+            type="file"
+            id="cm-image-file"
+            accept="image/*"
+            style="display: none"
+          />
+          <input type="hidden" id="cm-image-url" />
+          <div
+            style="
+              display: flex;
+              align-items: center;
+              gap: 12px;
+              margin-top: 6px;
+            "
+          >
+            <button
+              type="button"
+              class="btn btn-ghost btn-sm"
+              onclick="document.getElementById('cm-image-file').click()"
+              style="padding: 6px 12px; font-size: 12px"
+            >
+              🖼️ Choose Photo…
+            </button>
+            <span
+              id="cm-image-filename"
+              class="text-muted"
+              style="
+                font-size: 11px;
+                max-width: 150px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+              "
+              >No photo chosen</span
+            >
+          </div>
+          <div
+            id="cm-image-preview-wrap"
+            style="display: none; margin-top: 10px"
+          >
+            <img
+              id="cm-image-preview"
+              src=""
+              alt="Preview"
+              style="
+                width: 80px;
+                height: 80px;
+                object-fit: cover;
+                border-radius: 50%;
+                border: 1px solid var(--border);
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+              "
+            />
+          </div>
+        </div>
       </form>
     </div>
     <div class="modal-footer">
@@ -113,6 +227,16 @@
     </div>
     <div class="modal-body" id="view-order-content">Loading…</div>
     <div class="modal-footer">
+      <button
+        class="btn btn-primary"
+        onclick="OrdersPage.editFromViewCurrent()"
+      >
+        ✏️ Edit Order
+      </button>
+      <button class="btn btn-primary" onclick="OrdersPage.printDescription()">
+        🖨 Print Description
+      </button>
+
       <button class="btn btn-ghost" onclick="Modal.close('modal-view-order')">
         Close
       </button>
@@ -264,222 +388,720 @@
 </div>
 
 <!-- Measurements Modal (for Jacket > Subcategory) -->
+<!-- Measurements Modal (for Jacket > Subcategory) -->
 <div class="modal-overlay" id="modal-measurements">
-  <div class="modal modal-xl">
+  <div class="modal modal-subcategory-details">
     <div class="modal-header">
-      <h3 id="measurements-modal-title">Subcategory Details</h3>
+      <h3
+        id="measurements-modal-title"
+        style="font-size: 15px; color: #fff; margin: 0; font-weight: 600"
+      >
+        Subcategory Details
+      </h3>
       <button
         class="btn-close-modal"
         onclick="Modal.close('modal-measurements')"
+        style="font-size: 15px; color: #fff"
       >
         ✕
       </button>
     </div>
     <div class="modal-body">
-      <!-- Image & Info -->
-      <div
-        style="
-          display: flex;
-          gap: 16px;
-          margin-bottom: 12px;
-          align-items: flex-start;
-        "
-      >
-        <div id="meas-sub-image-wrap" style="flex-shrink: 0"></div>
-        <div style="flex: 1">
-          <h4
-            id="meas-cat-sub-name"
-            style="
-              margin: 0 0 8px 0;
-              color: var(--text-primary);
-              font-size: 18px;
-            "
-          >
-            Category - Subcategory
-          </h4>
-          <textarea
-            id="meas-description"
-            class="form-control"
-            rows="2"
-            placeholder="Enter description..."
-            style="width: 100%"
-          ></textarea>
-        </div>
-      </div>
-
-      <!-- Formatting measurements grid -->
-      <div
-        class="grid-6"
-        style="column-gap: 12px; row-gap: 12px; margin-bottom: 12px"
-      >
-        <div class="form-group">
-          <label>Length</label><input type="text" id="meas-length" />
-        </div>
-        <div class="form-group">
-          <label>Chest</label><input type="text" id="meas-chest" />
-        </div>
-        <div class="form-group">
-          <label>Waist</label><input type="text" id="meas-waist" />
-        </div>
-        <div class="form-group">
-          <label>Hips</label><input type="text" id="meas-hips" />
-        </div>
-        <div class="form-group">
-          <label>Shoulder</label><input type="text" id="meas-shoulder" />
-        </div>
-        <div class="form-group">
-          <label>Sleeves</label><input type="text" id="meas-sleeves" />
-        </div>
-        <div class="form-group">
-          <label>Front</label><input type="text" id="meas-front" />
-        </div>
-        <div class="form-group">
-          <label>Back</label><input type="text" id="meas-back" />
-        </div>
-        <div class="form-group">
-          <label>Neck</label><input type="text" id="meas-neck" />
-        </div>
-      </div>
-
-      <!-- Characteristics checkboxes -->
-      <div class="form-group">
-        <label>Characteristics</label>
-        <div
-          class="grid-2"
-          style="column-gap: 24px; row-gap: 12px; margin-bottom: 20px"
-        >
-          <!-- Left Column -->
-          <div style="display: flex; flex-direction: column; gap: 12px">
-            <label style="display: flex; align-items: flex-start; gap: 8px">
-              <input
-                type="checkbox"
-                id="meas-chk-sloping-shoulder"
-                style="width: auto; margin-top: 4px"
-              />
-              <span
-                >Sloping Shoulder<br /><span
-                  style="font-weight: normal; color: var(--text-muted)"
-                  >(ไหล่เทา)</span
-                ></span
+      <div class="modal-detail-grid">
+        <!-- Left Column: Image, Description & Characteristics -->
+        <div class="modal-detail-left">
+          <!-- Image & Info Row -->
+          <div style="display: flex; gap: 16px; align-items: flex-start">
+            <div id="meas-sub-image-wrap" style="flex-shrink: 0"></div>
+            <div style="flex: 1; min-width: 0">
+              <h4
+                id="meas-cat-sub-name"
+                style="
+                  margin: 0 0 8px 0;
+                  color: #fff;
+                  font-size: 16px;
+                  font-weight: 600;
+                "
               >
-            </label>
-            <label style="display: flex; align-items: flex-start; gap: 8px">
-              <input
-                type="checkbox"
-                id="meas-chk-hunched-back"
-                style="width: auto; margin-top: 4px"
-              />
-              <span
-                >Hunched Back<br /><span
-                  style="font-weight: normal; color: var(--text-muted)"
-                  >(หลังค่อม)</span
-                ></span
-              >
-            </label>
-            <label style="display: flex; align-items: flex-start; gap: 8px">
-              <input
-                type="checkbox"
-                id="meas-chk-belly"
-                style="width: auto; margin-top: 4px"
-              />
-              <span
-                >Belly<br /><span
-                  style="font-weight: normal; color: var(--text-muted)"
-                  >(มีพุง)</span
-                ></span
-              >
-            </label>
-            <label style="display: flex; align-items: flex-start; gap: 8px">
-              <input
-                type="checkbox"
-                id="meas-chk-sway-back"
-                style="width: auto; margin-top: 4px"
-              />
-              <span
-                >Sway Back<br /><span
-                  style="font-weight: normal; color: var(--text-muted)"
-                  >(หลังอ่อน)</span
-                ></span
-              >
-            </label>
+                Category - Subcategory
+              </h4>
+              <textarea
+                id="meas-description"
+                class="form-control modal-description-textarea"
+                placeholder="Enter description..."
+              ></textarea>
+            </div>
           </div>
-          <!-- Right Column -->
-          <div style="display: flex; flex-direction: column; gap: 12px">
-            <label style="display: flex; align-items: flex-start; gap: 8px">
-              <input
-                type="checkbox"
-                id="meas-chk-male"
-                style="width: auto; margin-top: 4px"
-              />
-              <span
-                >Male<br /><span
-                  style="font-weight: normal; color: var(--text-muted)"
-                  >(ผู้ชาย)</span
-                ></span
+
+          <!-- Characteristics checkboxes -->
+          <div class="modal-detail-card flex-1">
+            <!-- Gender radio row -->
+            <div
+              style="
+                display: flex;
+                align-items: center;
+                gap: 20px;
+                margin-bottom: 10px;
+                padding-bottom: 10px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+              "
+            >
+              <label style="font-size: 14px; color: #fff; font-weight: 600"
+                >Gender:</label
               >
-            </label>
-            <label style="display: flex; align-items: flex-start; gap: 8px">
-              <input
-                type="checkbox"
-                id="meas-chk-female"
-                style="width: auto; margin-top: 4px"
-              />
-              <span
-                >Female<br /><span
-                  style="font-weight: normal; color: var(--text-muted)"
-                  >(ผู้หญิง)</span
-                ></span
+              <label
+                style="
+                  display: flex;
+                  align-items: center;
+                  gap: 6px;
+                  font-size: 13px;
+                  color: #fff;
+                  cursor: pointer;
+                "
               >
-            </label>
-            <label style="display: flex; align-items: flex-start; gap: 8px">
-              <input
-                type="checkbox"
-                id="meas-chk-low-leg"
-                style="width: auto; margin-top: 4px"
-              />
-              <span
-                >Low Leg<br /><span
-                  style="font-weight: normal; color: var(--text-muted)"
-                  >(ขาต่ำ)</span
-                ></span
+                <input
+                  type="radio"
+                  name="meas-gender"
+                  id="meas-chk-male"
+                  style="width: auto"
+                />
+                <span
+                  >Gents
+                  <span
+                    style="
+                      font-weight: normal;
+                      color: rgba(255, 255, 255, 0.6);
+                      font-size: 11px;
+                    "
+                    >(ผู้ชาย)</span
+                  ></span
+                >
+              </label>
+              <label
+                style="
+                  display: flex;
+                  align-items: center;
+                  gap: 6px;
+                  font-size: 13px;
+                  color: #fff;
+                  cursor: pointer;
+                "
               >
-            </label>
-            <label style="display: flex; align-items: flex-start; gap: 8px">
-              <input
-                type="checkbox"
-                id="meas-chk-left-lower"
-                style="width: auto; margin-top: 4px"
-              />
-              <span
-                >Left Side Lower<br /><span
-                  style="font-weight: normal; color: var(--text-muted)"
-                  >(ซ้ายต่ำ)</span
-                ></span
-              >
-            </label>
+                <input
+                  type="radio"
+                  name="meas-gender"
+                  id="meas-chk-female"
+                  style="width: auto"
+                />
+                <span
+                  >Ladies
+                  <span
+                    style="
+                      font-weight: normal;
+                      color: rgba(255, 255, 255, 0.6);
+                      font-size: 11px;
+                    "
+                    >(ผู้หญิง)</span
+                  ></span
+                >
+              </label>
+            </div>
+            <label
+              style="
+                font-size: 14px;
+                color: #fff;
+                font-weight: 600;
+                margin-bottom: 12px;
+                display: block;
+              "
+              >Characteristics</label
+            >
+            <div class="modal-characteristics-grid">
+              <!-- Left Column -->
+
+              <div style="display: flex; flex-direction: column; gap: 8px">
+                <label
+                  style="
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 6px;
+                    font-size: 13px;
+                    color: #fff;
+                    cursor: pointer;
+                    line-height: 1.2;
+                  "
+                >
+                  <input
+                    type="checkbox"
+                    id="meas-chk-sloping-shoulder"
+                    style="width: auto; margin-top: 2px"
+                  />
+                  <span
+                    >ไหล่เท (Sloping Shoulders)<br /><span
+                      style="
+                        font-weight: normal;
+                        color: rgba(255, 255, 255, 0.6);
+                        font-size: 11px;
+                      "
+                    ></span
+                  ></span>
+                </label>
+                <label
+                  style="
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 6px;
+                    font-size: 13px;
+                    color: #fff;
+                    cursor: pointer;
+                    line-height: 1.2;
+                  "
+                >
+                  <input
+                    type="checkbox"
+                    id="meas-chk-hunched-back"
+                    style="width: auto; margin-top: 2px"
+                  />
+                  <span
+                    >หลังค่อม (Hunched Back)<br /><span
+                      style="
+                        font-weight: normal;
+                        color: rgba(255, 255, 255, 0.6);
+                        font-size: 11px;
+                      "
+                    ></span
+                  ></span>
+                </label>
+                <label
+                  style="
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 6px;
+                    font-size: 13px;
+                    color: #fff;
+                    cursor: pointer;
+                    line-height: 1.2;
+                  "
+                >
+                  <input
+                    type="checkbox"
+                    id="meas-chk-belly"
+                    style="width: auto; margin-top: 2px"
+                  />
+                  <span
+                    >มีพุง (Protruding Belly)<br /><span
+                      style="
+                        font-weight: normal;
+                        color: rgba(255, 255, 255, 0.6);
+                        font-size: 11px;
+                      "
+                    ></span
+                  ></span>
+                </label>
+                <label
+                  style="
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 6px;
+                    font-size: 13px;
+                    color: #fff;
+                    cursor: pointer;
+                    line-height: 1.2;
+                  "
+                >
+                  <input
+                    type="checkbox"
+                    id="meas-chk-sway-back"
+                    style="width: auto; margin-top: 2px"
+                  />
+                  <span
+                    >หลังแอ่น (Swayback)<br /><span
+                      style="
+                        font-weight: normal;
+                        color: rgba(255, 255, 255, 0.6);
+                        font-size: 11px;
+                      "
+                    ></span
+                  ></span>
+                </label>
+              </div>
+              <!-- Right Column -->
+              <div style="display: flex; flex-direction: column; gap: 8px">
+                <label
+                  style="
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 6px;
+                    font-size: 13px;
+                    color: #fff;
+                    cursor: pointer;
+                    line-height: 1.2;
+                  "
+                >
+                  <input
+                    type="checkbox"
+                    id="meas-chk-low-leg"
+                    style="width: auto; margin-top: 2px"
+                  />
+                  <span
+                    >ขวาต่ำ (Right Shoulder Lower)<br /><span
+                      style="
+                        font-weight: normal;
+                        color: rgba(255, 255, 255, 0.6);
+                        font-size: 11px;
+                      "
+                    ></span
+                  ></span>
+                </label>
+                <label
+                  style="
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 6px;
+                    font-size: 13px;
+                    color: #fff;
+                    cursor: pointer;
+                    line-height: 1.2;
+                  "
+                >
+                  <input
+                    type="checkbox"
+                    id="meas-chk-left-lower"
+                    style="width: auto; margin-top: 2px"
+                  />
+                  <span
+                    >ซ้ายต่ำ (Left Shoulder Lower)<br /><span
+                      style="
+                        font-weight: normal;
+                        color: rgba(255, 255, 255, 0.6);
+                        font-size: 11px;
+                      "
+                    ></span
+                  ></span>
+                </label>
+                <label
+                  style="
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 6px;
+                    font-size: 13px;
+                    color: #fff;
+                    cursor: pointer;
+                    line-height: 1.2;
+                  "
+                >
+                  <input
+                    type="checkbox"
+                    id="meas-chk-closed-back"
+                    style="width: auto; margin-top: 2px"
+                  />
+                  <span>หลังปิด (X) (Closed Back)</span>
+                </label>
+                <label
+                  style="
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 6px;
+                    font-size: 13px;
+                    color: #fff;
+                    cursor: pointer;
+                    line-height: 1.2;
+                  "
+                >
+                  <input
+                    type="checkbox"
+                    id="meas-chk-center-pleat"
+                    style="width: auto; margin-top: 2px"
+                  />
+                  <span>ผ่ากลาง (T) ① (Center Pleat)</span>
+                </label>
+                <label
+                  style="
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 6px;
+                    font-size: 13px;
+                    color: #fff;
+                    cursor: pointer;
+                    line-height: 1.2;
+                  "
+                >
+                  <input
+                    type="checkbox"
+                    id="meas-chk-side-pleats"
+                    style="width: auto; margin-top: 2px"
+                  />
+                  <span>ผ่าข้าง (TT) ② (Side Pleats)</span>
+                </label>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- Order Info -->
-      <div class="order-qty-row" style="margin-top: 20px">
-        <div class="form-group" style="margin: 0; flex: 1">
-          <label>Quantity</label>
-          <input type="number" id="meas-qty" value="1" min="0.1" step="0.1" />
-        </div>
-        <div class="form-group" style="margin: 0; flex: 1">
-          <label>Color</label>
-          <input type="text" id="meas-color" placeholder="e.g. Black" />
-        </div>
-        <div class="form-group" style="margin: 0; flex: 1">
-          <label>Unit Price</label>
-          <input
-            type="number"
-            id="meas-unit-price"
-            placeholder="0.00"
-            min="0"
-            step="0.01"
-          />
+        <!-- Right Column: Measurements Grid & Order Info -->
+        <div class="modal-detail-right">
+          <!-- Measurements Grid (3 columns) -->
+          <div class="modal-detail-card flex-1" style="justify-content: center">
+            <div class="modal-measurements-grid">
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff">Length — ยาว</label>
+                <input
+                  type="text"
+                  id="meas-length"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff">Chest — อก</label>
+                <input
+                  type="text"
+                  id="meas-chest"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff">Waist — เอว</label>
+                <input
+                  type="text"
+                  id="meas-waist"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff">Hips — สะโพก</label>
+                <input
+                  type="text"
+                  id="meas-hips"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff"
+                  >Shoulder — ไหล่</label
+                >
+                <input
+                  type="text"
+                  id="meas-shoulder"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff"
+                  >Sleeves — แขน</label
+                >
+                <input
+                  type="text"
+                  id="meas-sleeves"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff"
+                  >Front — บ่าหน้า</label
+                >
+                <input
+                  type="text"
+                  id="meas-front"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff"
+                  >Back — บ่าหลัง</label
+                >
+                <input
+                  type="text"
+                  id="meas-back"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff">Neck — คอ</label>
+                <input
+                  type="text"
+                  id="meas-neck"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff"
+                  >Front Length — ยาวหน้า</label
+                >
+                <input
+                  type="text"
+                  id="meas-front-length"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff"
+                  >Back Length — ยาวหลัง</label
+                >
+                <input
+                  type="text"
+                  id="meas-back-length"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff"
+                  >Bust Height — อกสูง</label
+                >
+                <input
+                  type="text"
+                  id="meas-bust-height"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff"
+                  >Bust Width — อกห่าง</label
+                >
+                <input
+                  type="text"
+                  id="meas-bust-width"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff">Arm — วงแขน</label>
+                <input
+                  type="text"
+                  id="meas-arm"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Fabric Picker + Tailor Fees -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px">
+            <div class="modal-detail-card" style="padding: 12px">
+              <label
+                style="
+                  font-size: 13px;
+                  color: #fff;
+                  font-weight: 600;
+                  margin-bottom: 8px;
+                  display: block;
+                "
+                >Fabric (from Inventory)</label
+              >
+              <select
+                id="meas-fabric"
+                onchange="OrdersPage._pickFabric('meas')"
+                style="
+                  width: 100%;
+                  font-size: 13px;
+                  color: #fff;
+                  padding: 6px 8px;
+                  height: 32px;
+                  background: var(--bg-input, #2a2a2a);
+                  border: 1px solid rgba(255, 255, 255, 0.2);
+                  border-radius: 4px;
+                "
+              >
+                <option value="">— Select fabric —</option>
+              </select>
+              <div
+                id="meas-fabric-info"
+                style="
+                  display: none;
+                  margin-top: 8px;
+                  align-items: center;
+                  gap: 12px;
+                  flex-wrap: wrap;
+                "
+              >
+                <span style="font-size: 12px; color: rgba(255, 255, 255, 0.85)">
+                  Remaining:
+                  <strong
+                    id="meas-fabric-remaining"
+                    style="color: var(--gold-light, #ffd27f)"
+                    >—</strong
+                  >
+                </span>
+                <div
+                  class="form-group"
+                  style="
+                    margin: 0;
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                  "
+                >
+                  <label style="font-size: 12px; color: #fff; margin: 0"
+                    >Use</label
+                  >
+                  <input
+                    type="number"
+                    id="meas-use-count"
+                    min="0"
+                    step="0.01"
+                    placeholder="0"
+                    style="
+                      font-size: 13px;
+                      color: #fff;
+                      padding: 6px 8px;
+                      height: 32px;
+                      width: 90px;
+                    "
+                  />
+                  <span
+                    id="meas-fabric-unit"
+                    style="font-size: 12px; color: rgba(255, 255, 255, 0.7)"
+                    >yards</span
+                  >
+                </div>
+              </div>
+            </div>
+            <div class="modal-detail-card" style="padding: 12px">
+              <label
+                style="
+                  font-size: 13px;
+                  color: #fff;
+                  font-weight: 600;
+                  margin-bottom: 8px;
+                  display: block;
+                "
+                >Tailor Fees</label
+              >
+              <input
+                type="number"
+                id="meas-tailor-fees"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                style="
+                  width: 100%;
+                  font-size: 13px;
+                  color: #fff;
+                  padding: 6px 8px;
+                  height: 32px;
+                "
+              />
+            </div>
+          </div>
+
+          <!-- Order Info Row -->
+          <div class="modal-order-info-grid">
+            <div class="form-group" style="margin: 0">
+              <label style="font-size: 13px; color: #fff">Quantity</label>
+              <input
+                type="number"
+                id="meas-qty"
+                value="1"
+                min="0.1"
+                step="0.1"
+                style="
+                  font-size: 13px;
+                  color: #fff;
+                  padding: 6px 8px;
+                  height: 32px;
+                "
+              />
+            </div>
+            <div class="form-group" style="margin: 0">
+              <label style="font-size: 13px; color: #fff">Color</label>
+              <input
+                type="text"
+                id="meas-color"
+                placeholder="e.g. Black"
+                style="
+                  font-size: 13px;
+                  color: #fff;
+                  padding: 6px 8px;
+                  height: 32px;
+                "
+              />
+            </div>
+            <div class="form-group" style="margin: 0">
+              <label style="font-size: 13px; color: #fff">Unit Price</label>
+              <input
+                type="number"
+                id="meas-unit-price"
+                placeholder="0.00"
+                min="0"
+                step="0.01"
+                style="
+                  font-size: 13px;
+                  color: #fff;
+                  padding: 6px 8px;
+                  height: 32px;
+                "
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -499,203 +1121,558 @@
 </div>
 
 <!-- Measurements Modal (for Pant > Subcategory) -->
+<!-- Measurements Modal (for Pant > Subcategory) -->
 <div class="modal-overlay" id="modal-meas-pant">
-  <div class="modal modal-xl">
+  <div class="modal modal-subcategory-details">
     <div class="modal-header">
-      <h3 id="meas-pant-modal-title">Subcategory Details</h3>
-      <button class="btn-close-modal" onclick="Modal.close('modal-meas-pant')">
+      <h3
+        id="meas-pant-modal-title"
+        style="font-size: 15px; color: #fff; margin: 0; font-weight: 600"
+      >
+        Subcategory Details
+      </h3>
+      <button
+        class="btn-close-modal"
+        onclick="Modal.close('modal-meas-pant')"
+        style="font-size: 15px; color: #fff"
+      >
         ✕
       </button>
     </div>
     <div class="modal-body">
-      <!-- Image & Info -->
-      <div
-        style="
-          display: flex;
-          gap: 16px;
-          margin-bottom: 12px;
-          align-items: flex-start;
-        "
-      >
-        <div id="meas-pant-sub-image-wrap" style="flex-shrink: 0"></div>
-        <div style="flex: 1">
-          <h4
-            id="meas-pant-cat-sub-name"
-            style="
-              margin: 0 0 8px 0;
-              color: var(--text-primary);
-              font-size: 18px;
-            "
-          >
-            Category - Subcategory
-          </h4>
-          <textarea
-            id="meas-pant-description"
-            class="form-control"
-            rows="2"
-            placeholder="Enter description..."
-            style="width: 100%"
-          ></textarea>
-        </div>
-      </div>
-
-      <!-- Formatting measurements grid -->
-      <div
-        class="grid-6"
-        style="column-gap: 12px; row-gap: 12px; margin-bottom: 12px"
-      >
-        <div class="form-group">
-          <label>Waist</label><input type="text" id="meas-pant-waist" />
-        </div>
-        <div class="form-group">
-          <label>Hips</label><input type="text" id="meas-pant-hips" />
-        </div>
-        <div class="form-group">
-          <label>Crotch</label><input type="text" id="meas-pant-crotch" />
-        </div>
-        <div class="form-group">
-          <label>Thighs</label><input type="text" id="meas-pant-thighs" />
-        </div>
-        <div class="form-group">
-          <label>Knee</label><input type="text" id="meas-pant-knee" />
-        </div>
-        <div class="form-group">
-          <label>Bottom</label><input type="text" id="meas-pant-bottom" />
-        </div>
-        <div class="form-group">
-          <label>Length</label><input type="text" id="meas-pant-length" />
-        </div>
-        <div class="form-group">
-          <label>Shorts</label><input type="text" id="meas-pant-shorts" />
-        </div>
-        <div class="form-group">
-          <label>Stomach</label><input type="text" id="meas-pant-stomach" />
-        </div>
-        <div class="form-group">
-          <label>Skirt Length</label
-          ><input type="text" id="meas-pant-skirt-length" />
-        </div>
-      </div>
-
-      <!-- Characteristics checkboxes -->
-      <div class="form-group">
-        <label>Characteristics</label>
-        <div
-          class="grid-2"
-          style="column-gap: 24px; row-gap: 12px; margin-bottom: 20px"
-        >
-          <!-- Left Column -->
-          <div style="display: flex; flex-direction: column; gap: 12px">
-            <label style="display: flex; align-items: flex-start; gap: 8px">
-              <input
-                type="checkbox"
-                id="meas-pant-chk-flat-seat"
-                style="width: auto; margin-top: 4px"
-              />
-              <span
-                >Flat Seat<br /><span
-                  style="font-weight: normal; color: var(--text-muted)"
-                  >(ก้นแบน)</span
-                ></span
+      <div class="modal-detail-grid">
+        <!-- Left Column: Image, Description & Characteristics -->
+        <div class="modal-detail-left">
+          <!-- Image & Info Row -->
+          <div style="display: flex; gap: 16px; align-items: flex-start">
+            <div id="meas-pant-sub-image-wrap" style="flex-shrink: 0"></div>
+            <div style="flex: 1; min-width: 0">
+              <h4
+                id="meas-pant-cat-sub-name"
+                style="
+                  margin: 0 0 8px 0;
+                  color: #fff;
+                  font-size: 16px;
+                  font-weight: 600;
+                "
               >
-            </label>
-            <label style="display: flex; align-items: flex-start; gap: 8px">
-              <input
-                type="checkbox"
-                id="meas-pant-chk-prominent-seat"
-                style="width: auto; margin-top: 4px"
-              />
-              <span
-                >Prominent Seat<br /><span
-                  style="font-weight: normal; color: var(--text-muted)"
-                  >(ก้นงอน)</span
-                ></span
-              >
-            </label>
-            <label style="display: flex; align-items: flex-start; gap: 8px">
-              <input
-                type="checkbox"
-                id="meas-pant-chk-front-low"
-                style="width: auto; margin-top: 4px"
-              />
-              <span
-                >Front Low<br /><span
-                  style="font-weight: normal; color: var(--text-muted)"
-                  >(หน้าต่ำ)</span
-                ></span
-              >
-            </label>
+                Category - Subcategory
+              </h4>
+              <textarea
+                id="meas-pant-description"
+                class="form-control modal-description-textarea"
+                placeholder="Enter description..."
+              ></textarea>
+            </div>
           </div>
-          <!-- Right Column -->
-          <div style="display: flex; flex-direction: column; gap: 12px">
-            <label style="display: flex; align-items: flex-start; gap: 8px">
-              <input
-                type="checkbox"
-                id="meas-pant-chk-male"
-                style="width: auto; margin-top: 4px"
-              />
-              <span
-                >Male<br /><span
-                  style="font-weight: normal; color: var(--text-muted)"
-                  >(ผู้ชาย)</span
-                ></span
+
+          <!-- Characteristics checkboxes -->
+          <div class="modal-detail-card flex-1">
+            <!-- Gender radio row -->
+            <div
+              style="
+                display: flex;
+                align-items: center;
+                gap: 20px;
+                margin-bottom: 10px;
+                padding-bottom: 10px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+              "
+            >
+              <label style="font-size: 14px; color: #fff; font-weight: 600"
+                >Gender:</label
               >
-            </label>
-            <label style="display: flex; align-items: flex-start; gap: 8px">
-              <input
-                type="checkbox"
-                id="meas-pant-chk-female"
-                style="width: auto; margin-top: 4px"
-              />
-              <span
-                >Female<br /><span
-                  style="font-weight: normal; color: var(--text-muted)"
-                  >(ผู้หญิง)</span
-                ></span
+              <label
+                style="
+                  display: flex;
+                  align-items: center;
+                  gap: 6px;
+                  font-size: 13px;
+                  color: #fff;
+                  cursor: pointer;
+                "
               >
-            </label>
-            <label style="display: flex; align-items: flex-start; gap: 8px">
-              <input
-                type="checkbox"
-                id="meas-pant-chk-front-thigh"
-                style="width: auto; margin-top: 4px"
-              />
-              <span
-                >Prominent Front Thigh<br /><span
-                  style="font-weight: normal; color: var(--text-muted)"
-                  >(มีหน้าขา)</span
-                ></span
+                <input
+                  type="radio"
+                  name="meas-pant-gender"
+                  id="meas-pant-chk-male"
+                  style="width: auto"
+                />
+                <span
+                  >Gents
+                  <span
+                    style="
+                      font-weight: normal;
+                      color: rgba(255, 255, 255, 0.6);
+                      font-size: 11px;
+                    "
+                    >(ผู้ชาย)</span
+                  ></span
+                >
+              </label>
+              <label
+                style="
+                  display: flex;
+                  align-items: center;
+                  gap: 6px;
+                  font-size: 13px;
+                  color: #fff;
+                  cursor: pointer;
+                "
               >
-            </label>
+                <input
+                  type="radio"
+                  name="meas-pant-gender"
+                  id="meas-pant-chk-female"
+                  style="width: auto"
+                />
+                <span
+                  >Ladies
+                  <span
+                    style="
+                      font-weight: normal;
+                      color: rgba(255, 255, 255, 0.6);
+                      font-size: 11px;
+                    "
+                    >(ผู้หญิง)</span
+                  ></span
+                >
+              </label>
+            </div>
+            <label
+              style="
+                font-size: 14px;
+                color: #fff;
+                font-weight: 600;
+                margin-bottom: 12px;
+                display: block;
+              "
+              >Characteristics</label
+            >
+            <div class="modal-characteristics-grid">
+              <!-- Left Column -->
+
+              <div style="display: flex; flex-direction: column; gap: 8px">
+                <label
+                  style="
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 6px;
+                    font-size: 13px;
+                    color: #fff;
+                    cursor: pointer;
+                    line-height: 1.2;
+                  "
+                >
+                  <input
+                    type="checkbox"
+                    id="meas-pant-chk-flat-seat"
+                    style="width: auto; margin-top: 2px"
+                  />
+                  <span
+                    >ก้นแบน (Flat Seat / Flat Buttocks)<br /><span
+                      style="
+                        font-weight: normal;
+                        color: rgba(255, 255, 255, 0.6);
+                        font-size: 11px;
+                      "
+                    ></span
+                  ></span>
+                </label>
+                <label
+                  style="
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 6px;
+                    font-size: 13px;
+                    color: #fff;
+                    cursor: pointer;
+                    line-height: 1.2;
+                  "
+                >
+                  <input
+                    type="checkbox"
+                    id="meas-pant-chk-prominent-seat"
+                    style="width: auto; margin-top: 2px"
+                  />
+                  <span
+                    >ก้นงอน (Prominent Seat / Protruding Buttocks)<br /><span
+                      style="
+                        font-weight: normal;
+                        color: rgba(255, 255, 255, 0.6);
+                        font-size: 11px;
+                      "
+                    ></span
+                  ></span>
+                </label>
+                <label
+                  style="
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 6px;
+                    font-size: 13px;
+                    color: #fff;
+                    cursor: pointer;
+                    line-height: 1.2;
+                  "
+                >
+                  <input
+                    type="checkbox"
+                    id="meas-pant-chk-front-low"
+                    style="width: auto; margin-top: 2px"
+                  />
+                  <span
+                    >หน้าต่ำ (Front Lower)<br /><span
+                      style="
+                        font-weight: normal;
+                        color: rgba(255, 255, 255, 0.6);
+                        font-size: 11px;
+                      "
+                    ></span
+                  ></span>
+                </label>
+              </div>
+              <!-- Right Column -->
+              <div style="display: flex; flex-direction: column; gap: 8px">
+                <label
+                  style="
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 6px;
+                    font-size: 13px;
+                    color: #fff;
+                    cursor: pointer;
+                    line-height: 1.2;
+                  "
+                >
+                  <input
+                    type="checkbox"
+                    id="meas-pant-chk-front-thigh"
+                    style="width: auto; margin-top: 2px"
+                  />
+                  <span
+                    >มีหนาบา (Thick Thighs / Large Thighs)<br /><span
+                      style="
+                        font-weight: normal;
+                        color: rgba(255, 255, 255, 0.6);
+                        font-size: 11px;
+                      "
+                    ></span
+                  ></span>
+                </label>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- Order Info -->
-      <div class="order-qty-row" style="margin-top: 20px">
-        <div class="form-group" style="margin: 0; flex: 1">
-          <label>Quantity</label>
-          <input
-            type="number"
-            id="meas-pant-qty"
-            value="1"
-            min="0.1"
-            step="0.1"
-          />
-        </div>
-        <div class="form-group" style="margin: 0; flex: 1">
-          <label>Color</label>
-          <input type="text" id="meas-pant-color" placeholder="e.g. Black" />
-        </div>
-        <div class="form-group" style="margin: 0; flex: 1">
-          <label>Unit Price</label>
-          <input
-            type="number"
-            id="meas-pant-unit-price"
-            placeholder="0.00"
-            min="0"
-            step="0.01"
-          />
+        <!-- Right Column: Measurements Grid & Order Info -->
+        <div class="modal-detail-right">
+          <!-- Measurements Grid (3 columns) -->
+          <div class="modal-detail-card flex-1" style="justify-content: center">
+            <div class="modal-measurements-grid">
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff">Waist — เอว</label>
+                <input
+                  type="text"
+                  id="meas-pant-waist"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff">Hips — สะโพก</label>
+                <input
+                  type="text"
+                  id="meas-pant-hips"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff"
+                  >Crotch — เป้า</label
+                >
+                <input
+                  type="text"
+                  id="meas-pant-crotch"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff"
+                  >Thighs — โคนขา</label
+                >
+                <input
+                  type="text"
+                  id="meas-pant-thighs"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff">Knee — เข่า</label>
+                <input
+                  type="text"
+                  id="meas-pant-knee"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff"
+                  >Bottom — ปลายขา</label
+                >
+                <input
+                  type="text"
+                  id="meas-pant-bottom"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff">Length — ยาว</label>
+                <input
+                  type="text"
+                  id="meas-pant-length"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff"
+                  >Shorts — ขาสั้น</label
+                >
+                <input
+                  type="text"
+                  id="meas-pant-shorts"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff"
+                  >Stomach — หน้าท้อง</label
+                >
+                <input
+                  type="text"
+                  id="meas-pant-stomach"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff"
+                  >Skirt Length — กระโปรงยาว</label
+                >
+                <input
+                  type="text"
+                  id="meas-pant-skirt-length"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Fabric Picker + Tailor Fees -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px">
+            <div class="modal-detail-card" style="padding: 12px">
+              <label
+                style="
+                  font-size: 13px;
+                  color: #fff;
+                  font-weight: 600;
+                  margin-bottom: 8px;
+                  display: block;
+                "
+                >Fabric (from Inventory)</label
+              >
+              <select
+                id="meas-pant-fabric"
+                onchange="OrdersPage._pickFabric('meas-pant')"
+                style="
+                  width: 100%;
+                  font-size: 13px;
+                  color: #fff;
+                  padding: 6px 8px;
+                  height: 32px;
+                  background: var(--bg-input, #2a2a2a);
+                  border: 1px solid rgba(255, 255, 255, 0.2);
+                  border-radius: 4px;
+                "
+              >
+                <option value="">— Select fabric —</option>
+              </select>
+              <div
+                id="meas-pant-fabric-info"
+                style="
+                  display: none;
+                  margin-top: 8px;
+                  align-items: center;
+                  gap: 12px;
+                  flex-wrap: wrap;
+                "
+              >
+                <span style="font-size: 12px; color: rgba(255, 255, 255, 0.85)">
+                  Remaining:
+                  <strong
+                    id="meas-pant-fabric-remaining"
+                    style="color: var(--gold-light, #ffd27f)"
+                    >—</strong
+                  >
+                </span>
+                <div
+                  class="form-group"
+                  style="
+                    margin: 0;
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                  "
+                >
+                  <label style="font-size: 12px; color: #fff; margin: 0"
+                    >Use</label
+                  >
+                  <input
+                    type="number"
+                    id="meas-pant-use-count"
+                    min="0"
+                    step="0.01"
+                    placeholder="0"
+                    style="
+                      font-size: 13px;
+                      color: #fff;
+                      padding: 6px 8px;
+                      height: 32px;
+                      width: 90px;
+                    "
+                  />
+                  <span
+                    id="meas-pant-fabric-unit"
+                    style="font-size: 12px; color: rgba(255, 255, 255, 0.7)"
+                    >yards</span
+                  >
+                </div>
+              </div>
+            </div>
+            <div class="modal-detail-card" style="padding: 12px">
+              <label
+                style="
+                  font-size: 13px;
+                  color: #fff;
+                  font-weight: 600;
+                  margin-bottom: 8px;
+                  display: block;
+                "
+                >Tailor Fees</label
+              >
+              <input
+                type="number"
+                id="meas-pant-tailor-fees"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                style="
+                  width: 100%;
+                  font-size: 13px;
+                  color: #fff;
+                  padding: 6px 8px;
+                  height: 32px;
+                "
+              />
+            </div>
+          </div>
+
+          <!-- Order Info Row -->
+          <div class="modal-order-info-grid">
+            <div class="form-group" style="margin: 0">
+              <label style="font-size: 13px; color: #fff">Quantity</label>
+              <input
+                type="number"
+                id="meas-pant-qty"
+                value="1"
+                min="0.1"
+                step="0.1"
+                style="
+                  font-size: 13px;
+                  color: #fff;
+                  padding: 6px 8px;
+                  height: 32px;
+                "
+              />
+            </div>
+            <div class="form-group" style="margin: 0">
+              <label style="font-size: 13px; color: #fff">Color</label>
+              <input
+                type="text"
+                id="meas-pant-color"
+                placeholder="e.g. Black"
+                style="
+                  font-size: 13px;
+                  color: #fff;
+                  padding: 6px 8px;
+                  height: 32px;
+                "
+              />
+            </div>
+            <div class="form-group" style="margin: 0">
+              <label style="font-size: 13px; color: #fff">Unit Price</label>
+              <input
+                type="number"
+                id="meas-pant-unit-price"
+                placeholder="0.00"
+                min="0"
+                step="0.01"
+                style="
+                  font-size: 13px;
+                  color: #fff;
+                  padding: 6px 8px;
+                  height: 32px;
+                "
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -715,187 +1692,851 @@
 </div>
 
 <!-- Measurements Modal (for Shirt > Subcategory) -->
+<!-- Measurements Modal (for Shirt > Subcategory) -->
 <div class="modal-overlay" id="modal-meas-shirt">
-  <div class="modal modal-xl">
+  <div class="modal modal-subcategory-details">
     <div class="modal-header">
-      <h3 id="meas-shirt-modal-title">Subcategory Details</h3>
-      <button class="btn-close-modal" onclick="Modal.close('modal-meas-shirt')">
+      <h3
+        id="meas-shirt-modal-title"
+        style="font-size: 15px; color: #fff; margin: 0; font-weight: 600"
+      >
+        Subcategory Details
+      </h3>
+      <button
+        class="btn-close-modal"
+        onclick="Modal.close('modal-meas-shirt')"
+        style="font-size: 15px; color: #fff"
+      >
         ✕
       </button>
     </div>
     <div class="modal-body">
-      <!-- Image & Info -->
-      <div
-        style="
-          display: flex;
-          gap: 16px;
-          margin-bottom: 12px;
-          align-items: flex-start;
-        "
-      >
-        <div id="meas-shirt-sub-image-wrap" style="flex-shrink: 0"></div>
-        <div style="flex: 1">
-          <h4
-            id="meas-shirt-cat-sub-name"
-            style="
-              margin: 0 0 8px 0;
-              color: var(--text-primary);
-              font-size: 18px;
-            "
-          >
-            Category - Subcategory
-          </h4>
-          <textarea
-            id="meas-shirt-description"
-            class="form-control"
-            rows="2"
-            placeholder="Enter description..."
-            style="width: 100%"
-          ></textarea>
-        </div>
-      </div>
+      <div class="modal-detail-grid">
+        <!-- Left Column: Image, Description & Characteristics -->
+        <div class="modal-detail-left">
+          <!-- Image & Info Row -->
+          <div style="display: flex; gap: 16px; align-items: flex-start">
+            <div id="meas-shirt-sub-image-wrap" style="flex-shrink: 0"></div>
+            <div style="flex: 1; min-width: 0">
+              <h4
+                id="meas-shirt-cat-sub-name"
+                style="
+                  margin: 0 0 8px 0;
+                  color: #fff;
+                  font-size: 16px;
+                  font-weight: 600;
+                "
+              >
+                Category - Subcategory
+              </h4>
+              <textarea
+                id="meas-shirt-description"
+                class="form-control modal-description-textarea"
+                placeholder="Enter description..."
+              ></textarea>
+            </div>
+          </div>
 
-      <!-- Formatting measurements grid -->
-      <div
-        class="grid-6"
-        style="column-gap: 12px; row-gap: 12px; margin-bottom: 12px"
-      >
-        <div class="form-group">
-          <label>Length</label><input type="text" id="meas-shirt-length" />
+          <!-- Characteristics checkboxes -->
+          <div class="modal-detail-card flex-1">
+            <!-- Gender radio row -->
+            <div
+              style="
+                display: flex;
+                align-items: center;
+                gap: 20px;
+                margin-bottom: 10px;
+                padding-bottom: 10px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+              "
+            >
+              <label style="font-size: 14px; color: #fff; font-weight: 600"
+                >Gender:</label
+              >
+              <label
+                style="
+                  display: flex;
+                  align-items: center;
+                  gap: 6px;
+                  font-size: 13px;
+                  color: #fff;
+                  cursor: pointer;
+                "
+              >
+                <input
+                  type="radio"
+                  name="meas-shirt-gender"
+                  id="meas-shirt-chk-male"
+                  style="width: auto"
+                />
+                <span
+                  >Gents
+                  <span
+                    style="
+                      font-weight: normal;
+                      color: rgba(255, 255, 255, 0.6);
+                      font-size: 11px;
+                    "
+                    >(ผู้ชาย)</span
+                  ></span
+                >
+              </label>
+              <label
+                style="
+                  display: flex;
+                  align-items: center;
+                  gap: 6px;
+                  font-size: 13px;
+                  color: #fff;
+                  cursor: pointer;
+                "
+              >
+                <input
+                  type="radio"
+                  name="meas-shirt-gender"
+                  id="meas-shirt-chk-female"
+                  style="width: auto"
+                />
+                <span
+                  >Ladies
+                  <span
+                    style="
+                      font-weight: normal;
+                      color: rgba(255, 255, 255, 0.6);
+                      font-size: 11px;
+                    "
+                    >(ผู้หญิง)</span
+                  ></span
+                >
+              </label>
+            </div>
+            <label
+              style="
+                font-size: 14px;
+                color: #fff;
+                font-weight: 600;
+                margin-bottom: 12px;
+                display: block;
+              "
+              >Characteristics</label
+            >
+            <div class="modal-characteristics-grid">
+              <!-- Left Column -->
+              <div style="display: flex; flex-direction: column; gap: 8px">
+                <label
+                  style="
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 6px;
+                    font-size: 13px;
+                    color: #fff;
+                    cursor: pointer;
+                    line-height: 1.2;
+                  "
+                >
+                  <input
+                    type="checkbox"
+                    id="meas-shirt-chk-sloping-shoulder"
+                    style="width: auto; margin-top: 2px"
+                  />
+                  <span
+                    >ไหล่เท (Sloping Shoulders)<br /><span
+                      style="
+                        font-weight: normal;
+                        color: rgba(255, 255, 255, 0.6);
+                        font-size: 11px;
+                      "
+                    ></span
+                  ></span>
+                </label>
+                <label
+                  style="
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 6px;
+                    font-size: 13px;
+                    color: #fff;
+                    cursor: pointer;
+                    line-height: 1.2;
+                  "
+                >
+                  <input
+                    type="checkbox"
+                    id="meas-shirt-chk-belly"
+                    style="width: auto; margin-top: 2px"
+                  />
+                  <span
+                    >มีพุง (Protruding Belly / Stomach)<br /><span
+                      style="
+                        font-weight: normal;
+                        color: rgba(255, 255, 255, 0.6);
+                        font-size: 11px;
+                      "
+                    ></span
+                  ></span>
+                </label>
+                <label
+                  style="
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 6px;
+                    font-size: 13px;
+                    color: #fff;
+                    cursor: pointer;
+                    line-height: 1.2;
+                  "
+                >
+                  <input
+                    type="checkbox"
+                    id="meas-shirt-chk-hunched-back"
+                    style="width: auto; margin-top: 2px"
+                  />
+                  <span
+                    >หลังค่อม (Hunched Back)<br /><span
+                      style="
+                        font-weight: normal;
+                        color: rgba(255, 255, 255, 0.6);
+                        font-size: 11px;
+                      "
+                    ></span
+                  ></span>
+                </label>
+                <label
+                  style="
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 6px;
+                    font-size: 13px;
+                    color: #fff;
+                    cursor: pointer;
+                    line-height: 1.2;
+                  "
+                >
+                  <input
+                    type="checkbox"
+                    id="meas-shirt-chk-pointed"
+                    style="width: auto; margin-top: 2px"
+                  />
+                  <span
+                    >แหลม (F) (Point Collar)<br /><span
+                      style="
+                        font-weight: normal;
+                        color: rgba(255, 255, 255, 0.6);
+                        font-size: 11px;
+                      "
+                    ></span
+                  ></span>
+                </label>
+                <label
+                  style="
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 6px;
+                    font-size: 13px;
+                    color: #fff;
+                    cursor: pointer;
+                    line-height: 1.2;
+                  "
+                >
+                  <input
+                    type="checkbox"
+                    id="meas-shirt-chk-square"
+                    style="width: auto; margin-top: 2px"
+                  />
+                  <span
+                    >ป้าน (I) (Semi-Spread Collar)<br /><span
+                      style="
+                        font-weight: normal;
+                        color: rgba(255, 255, 255, 0.6);
+                        font-size: 11px;
+                      "
+                    ></span
+                  ></span>
+                </label>
+              </div>
+              <!-- Right Column -->
+              <div style="display: flex; flex-direction: column; gap: 8px">
+                <label
+                  style="
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 6px;
+                    font-size: 13px;
+                    color: #fff;
+                    cursor: pointer;
+                    line-height: 1.2;
+                  "
+                >
+                  <input
+                    type="checkbox"
+                    id="meas-shirt-chk-wide-square"
+                    style="width: auto; margin-top: 2px"
+                  />
+                  <span
+                    >ป้าน (180) (Wide Spread Collar (180°))<br /><span
+                      style="
+                        font-weight: normal;
+                        color: rgba(255, 255, 255, 0.6);
+                        font-size: 11px;
+                      "
+                    ></span
+                  ></span>
+                </label>
+                <label
+                  style="
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 6px;
+                    font-size: 13px;
+                    color: #fff;
+                    cursor: pointer;
+                    line-height: 1.2;
+                  "
+                >
+                  <input
+                    type="checkbox"
+                    id="meas-shirt-chk-collar-roll"
+                    style="width: auto; margin-top: 2px"
+                  />
+                  <span
+                    >คุมบนปก (Top Collar Stitching)<br /><span
+                      style="
+                        font-weight: normal;
+                        color: rgba(255, 255, 255, 0.6);
+                        font-size: 11px;
+                      "
+                    ></span
+                  ></span>
+                </label>
+                <label
+                  style="
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 6px;
+                    font-size: 13px;
+                    color: #fff;
+                    cursor: pointer;
+                    line-height: 1.2;
+                  "
+                >
+                  <input
+                    type="checkbox"
+                    id="meas-shirt-chk-lapel-gorge"
+                    style="width: auto; margin-top: 2px"
+                  />
+                  <span
+                    >คุมใต้ปก (Under Collar Stitching)<br /><span
+                      style="
+                        font-weight: normal;
+                        color: rgba(255, 255, 255, 0.6);
+                        font-size: 11px;
+                      "
+                    ></span
+                  ></span>
+                </label>
+                <label
+                  style="
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 6px;
+                    font-size: 13px;
+                    color: #fff;
+                    cursor: pointer;
+                    line-height: 1.2;
+                  "
+                >
+                  <input
+                    type="checkbox"
+                    id="meas-shirt-chk-back-pleat"
+                    style="width: auto; margin-top: 2px"
+                  />
+                  <span
+                    >คาร์ท (Back Pleat)<br /><span
+                      style="
+                        font-weight: normal;
+                        color: rgba(255, 255, 255, 0.6);
+                        font-size: 11px;
+                      "
+                    ></span
+                  ></span>
+                </label>
+                <label
+                  style="
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 6px;
+                    font-size: 13px;
+                    color: #fff;
+                    cursor: pointer;
+                    line-height: 1.2;
+                  "
+                >
+                  <input
+                    type="checkbox"
+                    id="meas-shirt-chk-plain-back"
+                    style="width: auto; margin-top: 2px"
+                  />
+                  <span
+                    >หลังเรียบ (X) (Plain Back / No Pleat)<br /><span
+                      style="
+                        font-weight: normal;
+                        color: rgba(255, 255, 255, 0.6);
+                        font-size: 11px;
+                      "
+                    ></span
+                  ></span>
+                </label>
+                <label
+                  style="
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 6px;
+                    font-size: 13px;
+                    color: #fff;
+                    cursor: pointer;
+                    line-height: 1.2;
+                  "
+                >
+                  <input
+                    type="checkbox"
+                    id="meas-shirt-chk-center-pleat"
+                    style="width: auto; margin-top: 2px"
+                  />
+                  <span
+                    >จีบกลาง (TT) (Center Pleat)<br /><span
+                      style="
+                        font-weight: normal;
+                        color: rgba(255, 255, 255, 0.6);
+                        font-size: 11px;
+                      "
+                    ></span
+                  ></span>
+                </label>
+                <label
+                  style="
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 6px;
+                    font-size: 13px;
+                    color: #fff;
+                    cursor: pointer;
+                    line-height: 1.2;
+                  "
+                >
+                  <input
+                    type="checkbox"
+                    id="meas-shirt-chk-side-pleats"
+                    style="width: auto; margin-top: 2px"
+                  />
+                  <span
+                    >จีบข้าง (TT) (Side Pleats)<br /><span
+                      style="
+                        font-weight: normal;
+                        color: rgba(255, 255, 255, 0.6);
+                        font-size: 11px;
+                      "
+                    ></span
+                  ></span>
+                </label>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="form-group">
-          <label>Chest</label><input type="text" id="meas-shirt-chest" />
-        </div>
-        <div class="form-group">
-          <label>Waist</label><input type="text" id="meas-shirt-waist" />
-        </div>
-        <div class="form-group">
-          <label>Hips</label><input type="text" id="meas-shirt-hips" />
-        </div>
-        <div class="form-group">
-          <label>Shoulder</label><input type="text" id="meas-shirt-shoulder" />
-        </div>
-        <div class="form-group">
-          <label>Sleeves</label><input type="text" id="meas-shirt-sleeves" />
-        </div>
-        <div class="form-group">
-          <label>Neck</label><input type="text" id="meas-shirt-neck" />
-        </div>
-        <div class="form-group">
-          <label>Cuffs</label><input type="text" id="meas-shirt-cuffs" />
-        </div>
-        <div class="form-group">
-          <label>Front Length</label
-          ><input type="text" id="meas-shirt-front-length" />
-        </div>
-        <div class="form-group">
-          <label>Back Length</label
-          ><input type="text" id="meas-shirt-back-length" />
-        </div>
-        <div class="form-group">
-          <label>Bust Height</label
-          ><input type="text" id="meas-shirt-bust-height" />
-        </div>
-        <div class="form-group">
-          <label>Bust Width</label
-          ><input type="text" id="meas-shirt-bust-width" />
-        </div>
-        <div class="form-group">
-          <label>Front</label><input type="text" id="meas-shirt-front" />
-        </div>
-        <div class="form-group">
-          <label>Back</label><input type="text" id="meas-shirt-back" />
-        </div>
-        <div class="form-group">
-          <label>Skirt Length</label
-          ><input type="text" id="meas-shirt-skirt-length" />
-        </div>
-      </div>
 
-      <!-- Characteristics checkboxes -->
-      <div class="form-group">
-        <label>Characteristics</label>
-        <div class="grid-2" style="column-gap: 20px; row-gap: 8px">
-          <label
-            ><input type="checkbox" id="meas-shirt-chk-sloping-shoulder" />
-            Sloping Shoulder (ไหล่เทา)</label
-          >
-          <label
-            ><input type="checkbox" id="meas-shirt-chk-belly" /> Belly
-            (มีพุง)</label
-          >
-          <label
-            ><input type="checkbox" id="meas-shirt-chk-hunched-back" /> Hunched
-            Back (หลังค่อม)</label
-          >
-          <label
-            ><input type="checkbox" id="meas-shirt-chk-male" /> Male
-            (ผู้ชาย)</label
-          >
-          <label
-            ><input type="checkbox" id="meas-shirt-chk-female" /> Female
-            (ผู้หญิง)</label
-          >
-          <label
-            ><input type="checkbox" id="meas-shirt-chk-pointed" /> Pointed (แหลม
-            (F))</label
-          >
-          <label
-            ><input type="checkbox" id="meas-shirt-chk-square" /> Square (ป้าน
-            (I))</label
-          >
-          <label
-            ><input type="checkbox" id="meas-shirt-chk-wide-square" /> Wide
-            Square (ป้าน (180))</label
-          >
-          <label
-            ><input type="checkbox" id="meas-shirt-chk-collar-roll" /> Collar
-            Roll (คุมใบปก)</label
-          >
-          <label
-            ><input type="checkbox" id="meas-shirt-chk-lapel-gorge" /> Lapel
-            Gorge (จุมไตปก)</label
-          >
-          <label
-            ><input type="checkbox" id="meas-shirt-chk-plain-back" /> Plain Back
-            (หลังเรียบ (X))</label
-          >
-          <label
-            ><input type="checkbox" id="meas-shirt-chk-center-pleat" /> Center
-            Pleat (จีบกลาง (TT))</label
-          >
-          <label
-            ><input type="checkbox" id="meas-shirt-chk-side-pleats" /> Side
-            Pleats (จีบข้าง (TT))</label
-          >
-        </div>
-      </div>
+        <!-- Right Column: Measurements Grid & Order Info -->
+        <div class="modal-detail-right">
+          <!-- Measurements Grid (3 columns) -->
+          <div class="modal-detail-card flex-1" style="justify-content: center">
+            <div class="modal-measurements-grid">
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff">Length — ยาว</label>
+                <input
+                  type="text"
+                  id="meas-shirt-length"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff">Chest — อก</label>
+                <input
+                  type="text"
+                  id="meas-shirt-chest"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff">Waist — เอว</label>
+                <input
+                  type="text"
+                  id="meas-shirt-waist"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff">Hips — สะโพก</label>
+                <input
+                  type="text"
+                  id="meas-shirt-hips"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff"
+                  >Shoulder — ไหล่</label
+                >
+                <input
+                  type="text"
+                  id="meas-shirt-shoulder"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff"
+                  >Sleeves — แขน</label
+                >
+                <input
+                  type="text"
+                  id="meas-shirt-sleeves"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff">Neck — คอ</label>
+                <input
+                  type="text"
+                  id="meas-shirt-neck"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff"
+                  >Cuffs — ข้อมือ</label
+                >
+                <input
+                  type="text"
+                  id="meas-shirt-cuffs"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff"
+                  >Front Length — ยาวหน้า</label
+                >
+                <input
+                  type="text"
+                  id="meas-shirt-front-length"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff"
+                  >Back Length — ยาวหลัง</label
+                >
+                <input
+                  type="text"
+                  id="meas-shirt-back-length"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff"
+                  >Bust Height — อกสูง</label
+                >
+                <input
+                  type="text"
+                  id="meas-shirt-bust-height"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff"
+                  >Bust Width — อกห่าง</label
+                >
+                <input
+                  type="text"
+                  id="meas-shirt-bust-width"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff"
+                  >Front — บ่าหน้า</label
+                >
+                <input
+                  type="text"
+                  id="meas-shirt-front"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff"
+                  >Back — บ่าหลัง</label
+                >
+                <input
+                  type="text"
+                  id="meas-shirt-back"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff"
+                  >Skirt Length — กระโปรงยาว</label
+                >
+                <input
+                  type="text"
+                  id="meas-shirt-skirt-length"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+              <div class="form-group" style="margin: 0">
+                <label style="font-size: 13px; color: #fff">Arm — วงแขน</label>
+                <input
+                  type="text"
+                  id="meas-shirt-arm"
+                  style="
+                    font-size: 13px;
+                    color: #fff;
+                    padding: 6px 8px;
+                    height: 32px;
+                  "
+                />
+              </div>
+            </div>
+          </div>
 
-      <!-- Order Info -->
-      <div class="order-qty-row" style="margin-top: 20px">
-        <div class="form-group" style="margin: 0; flex: 1">
-          <label>Quantity</label>
-          <input
-            type="number"
-            id="meas-shirt-qty"
-            value="1"
-            min="0.1"
-            step="0.1"
-          />
-        </div>
-        <div class="form-group" style="margin: 0; flex: 1">
-          <label>Color</label>
-          <input type="text" id="meas-shirt-color" placeholder="e.g. White" />
-        </div>
-        <div class="form-group" style="margin: 0; flex: 1">
-          <label>Unit Price</label>
-          <input
-            type="number"
-            id="meas-shirt-unit-price"
-            placeholder="0.00"
-            min="0"
-            step="0.01"
-          />
+          <!-- Fabric Picker + Tailor Fees -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px">
+            <div class="modal-detail-card" style="padding: 12px">
+              <label
+                style="
+                  font-size: 13px;
+                  color: #fff;
+                  font-weight: 600;
+                  margin-bottom: 8px;
+                  display: block;
+                "
+                >Fabric (from Inventory)</label
+              >
+              <select
+                id="meas-shirt-fabric"
+                onchange="OrdersPage._pickFabric('meas-shirt')"
+                style="
+                  width: 100%;
+                  font-size: 13px;
+                  color: #fff;
+                  padding: 6px 8px;
+                  height: 32px;
+                  background: var(--bg-input, #2a2a2a);
+                  border: 1px solid rgba(255, 255, 255, 0.2);
+                  border-radius: 4px;
+                "
+              >
+                <option value="">— Select fabric —</option>
+              </select>
+              <div
+                id="meas-shirt-fabric-info"
+                style="
+                  display: none;
+                  margin-top: 8px;
+                  align-items: center;
+                  gap: 12px;
+                  flex-wrap: wrap;
+                "
+              >
+                <span style="font-size: 12px; color: rgba(255, 255, 255, 0.85)">
+                  Remaining:
+                  <strong
+                    id="meas-shirt-fabric-remaining"
+                    style="color: var(--gold-light, #ffd27f)"
+                    >—</strong
+                  >
+                </span>
+                <div
+                  class="form-group"
+                  style="
+                    margin: 0;
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                  "
+                >
+                  <label style="font-size: 12px; color: #fff; margin: 0"
+                    >Use</label
+                  >
+                  <input
+                    type="number"
+                    id="meas-shirt-use-count"
+                    min="0"
+                    step="0.01"
+                    placeholder="0"
+                    style="
+                      font-size: 13px;
+                      color: #fff;
+                      padding: 6px 8px;
+                      height: 32px;
+                      width: 90px;
+                    "
+                  />
+                  <span
+                    id="meas-shirt-fabric-unit"
+                    style="font-size: 12px; color: rgba(255, 255, 255, 0.7)"
+                    >yards</span
+                  >
+                </div>
+              </div>
+            </div>
+            <div class="modal-detail-card" style="padding: 12px">
+              <label
+                style="
+                  font-size: 13px;
+                  color: #fff;
+                  font-weight: 600;
+                  margin-bottom: 8px;
+                  display: block;
+                "
+                >Tailor Fees</label
+              >
+              <input
+                type="number"
+                id="meas-shirt-tailor-fees"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                style="
+                  width: 100%;
+                  font-size: 13px;
+                  color: #fff;
+                  padding: 6px 8px;
+                  height: 32px;
+                "
+              />
+            </div>
+          </div>
+
+          <!-- Order Info Row -->
+          <div class="modal-order-info-grid">
+            <div class="form-group" style="margin: 0">
+              <label style="font-size: 13px; color: #fff">Quantity</label>
+              <input
+                type="number"
+                id="meas-shirt-qty"
+                value="1"
+                min="0.1"
+                step="0.1"
+                style="
+                  font-size: 13px;
+                  color: #fff;
+                  padding: 6px 8px;
+                  height: 32px;
+                "
+              />
+            </div>
+            <div class="form-group" style="margin: 0">
+              <label style="font-size: 13px; color: #fff">Color</label>
+              <input
+                type="text"
+                id="meas-shirt-color"
+                placeholder="e.g. White"
+                style="
+                  font-size: 13px;
+                  color: #fff;
+                  padding: 6px 8px;
+                  height: 32px;
+                "
+              />
+            </div>
+            <div class="form-group" style="margin: 0">
+              <label style="font-size: 13px; color: #fff">Unit Price</label>
+              <input
+                type="number"
+                id="meas-shirt-unit-price"
+                placeholder="0.00"
+                min="0"
+                step="0.01"
+                style="
+                  font-size: 13px;
+                  color: #fff;
+                  padding: 6px 8px;
+                  height: 32px;
+                "
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -911,5 +2552,190 @@
         ＋ Add to Order
       </button>
     </div>
+  </div>
+</div>
+
+<!-- Fabric Inventory Modal -->
+<div class="modal-overlay" id="modal-inventory">
+  <div class="modal modal-sm-h">
+    <div class="modal-header">
+      <h3 id="inv-modal-title">Fabric</h3>
+      <button class="btn-close-modal" onclick="Modal.close('modal-inventory')">
+        ✕
+      </button>
+    </div>
+    <div class="modal-body">
+      <form id="inventory-modal-form" novalidate>
+        <input type="hidden" id="inv-id-hidden" />
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Name <span class="required">*</span></label>
+            <input type="text" id="inv-name" placeholder="e.g. Italian Wool" />
+            <div class="field-error" style="display: none"></div>
+          </div>
+          <div class="form-group">
+            <label>Code</label>
+            <input type="text" id="inv-code" placeholder="e.g. IW-001" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Color <span class="required">*</span></label>
+          <input type="text" id="inv-color" placeholder="e.g. Navy Blue" />
+          <div class="field-error" style="display: none"></div>
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Count <span class="required">*</span></label>
+            <input
+              type="number"
+              id="inv-count"
+              placeholder="0"
+              min="0"
+              step="0.01"
+            />
+            <div class="field-error" style="display: none"></div>
+          </div>
+          <div class="form-group">
+            <label>Unit</label>
+            <select id="inv-unit">
+              <option value="yards">Yards</option>
+              <option value="inches">Inches</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Price <span class="required">*</span></label>
+          <input
+            type="number"
+            id="inv-price"
+            placeholder="0.00"
+            min="0"
+            step="0.01"
+          />
+          <div class="field-error" style="display: none"></div>
+        </div>
+        <div class="form-group">
+          <label>Remark</label>
+          <input type="text" id="inv-remark" placeholder="Optional notes" />
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="Modal.close('modal-inventory')">
+        Cancel
+      </button>
+      <button class="btn btn-gold" id="btn-save-inventory">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Expense Modal -->
+<div class="modal-overlay" id="modal-expense">
+  <div class="modal modal-sm-h">
+    <div class="modal-header">
+      <h3 id="exp-modal-title">Expense</h3>
+      <button class="btn-close-modal" onclick="Modal.close('modal-expense')">
+        ✕
+      </button>
+    </div>
+    <div class="modal-body">
+      <form id="expense-modal-form" novalidate>
+        <input type="hidden" id="exp-id-hidden" />
+        <div class="form-group">
+          <label>Date <span class="required">*</span></label>
+          <input type="date" id="exp-date" />
+          <div class="field-error" style="display: none"></div>
+        </div>
+        <div class="form-group">
+          <label>Name <span class="required">*</span></label>
+          <input
+            type="text"
+            id="exp-name"
+            placeholder="e.g. Electricity Bill"
+          />
+          <div class="field-error" style="display: none"></div>
+        </div>
+        <div class="form-group">
+          <label>Amount (THB) <span class="required">*</span></label>
+          <input
+            type="number"
+            id="exp-amount"
+            placeholder="0.00"
+            min="0"
+            step="0.01"
+          />
+          <div class="field-error" style="display: none"></div>
+        </div>
+        <div class="form-group">
+          <label>Remark</label>
+          <textarea
+            id="exp-remark"
+            class="form-control"
+            placeholder="Optional notes"
+            rows="3"
+          ></textarea>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="Modal.close('modal-expense')">
+        Cancel
+      </button>
+      <button class="btn btn-gold" id="btn-save-expense">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Customer Image Preview Lightbox -->
+<div
+  class="modal-overlay"
+  id="modal-image-preview"
+  onclick="Modal.close('modal-image-preview')"
+>
+  <div
+    style="
+      position: relative;
+      max-width: 90%;
+      max-height: 90%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    "
+    onclick="event.stopPropagation()"
+  >
+    <img
+      id="lightbox-image"
+      src=""
+      alt="Preview"
+      style="
+        max-width: 100%;
+        max-height: 80vh;
+        border-radius: 8px;
+        border: 2px solid var(--border);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+      "
+    />
+    <button
+      class="btn-close-modal"
+      onclick="Modal.close('modal-image-preview')"
+      style="
+        position: absolute;
+        top: -15px;
+        right: -15px;
+        background: var(--bg-card);
+        color: #fff;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        border: 1px solid var(--border);
+        cursor: pointer;
+      "
+    >
+      ✕
+    </button>
   </div>
 </div>

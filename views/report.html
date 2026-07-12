@@ -1,0 +1,465 @@
+<div class="page" id="page-report">
+  <div class="page-header">
+    <div class="header-content">
+      <h2>Reports</h2>
+      <p class="text-secondary">Sales and Revenue Reports</p>
+    </div>
+  </div>
+
+  <div class="page-content">
+    <!-- Filters -->
+    <div class="card mb-3">
+      <div class="card-header pb-0 border-0" style="display: flex; align-items: center; gap: 14px;">
+        <button class="btn btn-gold" onclick="ReportView.printPdf()">🖨 Print PDF</button>
+        <h3 class="card-title" style="margin: 0;">Report Filters</h3>
+      </div>
+      <div class="card-body">
+        <div
+          class="filter-row"
+          style="display: flex; gap: 1.5rem; align-items: flex-end"
+        >
+          <div class="form-group mb-0">
+            <label
+              style="
+                font-size: 11px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                opacity: 0.8;
+                font-weight: 600;
+                margin-bottom: 6px;
+                display: block;
+              "
+              >Filter By</label
+            >
+            <select
+              id="report-filter-type"
+              class="form-control"
+              onchange="ReportView.onFilterTypeChange()"
+              style="min-width: 140px"
+            >
+              <option value="daily">Daily</option>
+              <option value="monthly" selected>Monthly</option>
+              <option value="yearly">Yearly</option>
+            </select>
+          </div>
+
+          <!-- Daily Filter -->
+          <div
+            class="form-group mb-0"
+            id="report-daily-filter"
+            style="display: none"
+          >
+            <label
+              style="
+                font-size: 11px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                opacity: 0.8;
+                font-weight: 600;
+                margin-bottom: 6px;
+                display: block;
+              "
+              >Date</label
+            >
+            <input
+              type="date"
+              id="report-date"
+              class="form-control"
+              onchange="ReportView.loadData()"
+              style="min-width: 200px"
+            />
+          </div>
+
+          <!-- Monthly Filter -->
+          <div class="form-group mb-0" id="report-monthly-filter">
+            <label
+              style="
+                font-size: 11px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                opacity: 0.8;
+                font-weight: 600;
+                margin-bottom: 6px;
+                display: block;
+              "
+              >Month</label
+            >
+            <input
+              type="month"
+              id="report-month"
+              class="form-control"
+              onchange="ReportView.loadData()"
+              style="min-width: 200px"
+            />
+          </div>
+
+          <!-- Yearly Filter -->
+          <div
+            class="form-group mb-0"
+            id="report-yearly-filter"
+            style="display: none"
+          >
+            <label
+              style="
+                font-size: 11px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                opacity: 0.8;
+                font-weight: 600;
+                margin-bottom: 6px;
+                display: block;
+              "
+              >Year</label
+            >
+            <input
+              type="number"
+              id="report-year"
+              class="form-control"
+              onchange="ReportView.loadData()"
+              min="2000"
+              max="2100"
+              style="min-width: 200px"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 1: Summary ─────────────────────────────── -->
+    <div class="card mb-3 report-section">
+      <div class="card-header">
+        <h3 class="card-title">📊 Summary</h3>
+        <span class="text-secondary" style="font-size: 12px"
+          >Orders + Fabric Sales + Ready Made Products</span
+        >
+      </div>
+      <div class="card-body">
+        <div class="stats-row" style="grid-template-columns: repeat(6, 1fr)">
+          <div class="stat-card flex-1">
+            <div class="stat-icon gold">💰</div>
+            <div class="stat-info">
+              <div class="stat-value" id="report-sum-revenue">THB 0.00</div>
+              <div class="stat-label">Total Revenue</div>
+            </div>
+          </div>
+          <div class="stat-card flex-1">
+            <div class="stat-icon red" style="color: var(--accent-red)">💸</div>
+            <div class="stat-info">
+              <div class="stat-value" id="report-sum-expenses">THB 0.00</div>
+              <div class="stat-label">Total Expenses</div>
+            </div>
+          </div>
+          <div class="stat-card flex-1">
+            <div class="stat-icon" style="color: var(--accent-amber)">🧶</div>
+            <div class="stat-info">
+              <div class="stat-value" id="report-sum-fabric-cost">THB 0.00</div>
+              <div class="stat-label">Total Fabric Cost</div>
+            </div>
+          </div>
+          <div class="stat-card flex-1">
+            <div class="stat-icon" style="color: var(--accent-amber)">✂️</div>
+            <div class="stat-info">
+              <div class="stat-value" id="report-sum-tailor-fees">THB 0.00</div>
+              <div class="stat-label">Total Tailor Fees</div>
+            </div>
+          </div>
+          <div class="stat-card flex-1">
+            <div class="stat-icon" style="color: var(--accent-amber)">💳</div>
+            <div class="stat-info">
+              <div class="stat-value" id="report-sum-card-fees">THB 0.00</div>
+              <div class="stat-label">Total Card Fees</div>
+            </div>
+          </div>
+          <div class="stat-card flex-1">
+            <div class="stat-icon green" style="color: var(--accent-green)">
+              📈
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="report-sum-profit">THB 0.00</div>
+              <div class="stat-label">Total Profit</div>
+            </div>
+          </div>
+        </div>
+        <div
+          class="stats-row"
+          style="grid-template-columns: repeat(4, 1fr); margin-bottom: 0"
+        >
+          <div class="stat-card flex-1">
+            <div class="stat-icon blue">📋</div>
+            <div class="stat-info">
+              <div class="stat-value" id="report-sum-transactions">0</div>
+              <div class="stat-label">Total Transactions</div>
+            </div>
+          </div>
+          <div class="stat-card flex-1">
+            <div class="stat-icon" style="color: var(--accent-green)">🧵</div>
+            <div class="stat-info">
+              <div class="stat-value" id="report-sum-items">0</div>
+              <div class="stat-label">Total Items Sold</div>
+            </div>
+          </div>
+          <div class="stat-card flex-1">
+            <div class="stat-icon" style="color: var(--accent-blue)">🪡</div>
+            <div class="stat-info">
+              <div class="stat-value" id="report-sum-fabric-qty">0</div>
+              <div class="stat-label">Fabric Qty Sold</div>
+            </div>
+          </div>
+          <div class="stat-card flex-1">
+            <div class="stat-icon" style="color: var(--accent-amber)">👕</div>
+            <div class="stat-info">
+              <div class="stat-value" id="report-sum-rm-units">0</div>
+              <div class="stat-label">Ready Made Units Sold</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 2: Orders ──────────────────────────────── -->
+    <div class="card mb-3 report-section">
+      <div class="card-header">
+        <h3 class="card-title">✂️ Orders</h3>
+        <span class="text-secondary" style="font-size: 12px"
+          >Bespoke tailoring orders</span
+        >
+      </div>
+      <div class="card-body">
+        <div class="stats-row" style="grid-template-columns: repeat(5, 1fr)">
+          <div class="stat-card flex-1">
+            <div class="stat-icon gold">💰</div>
+            <div class="stat-info">
+              <div class="stat-value" id="report-order-revenue">THB 0.00</div>
+              <div class="stat-label">Order Revenue</div>
+            </div>
+          </div>
+          <div class="stat-card flex-1">
+            <div class="stat-icon" style="color: var(--accent-amber)">🧶</div>
+            <div class="stat-info">
+              <div class="stat-value" id="report-order-fabric-cost">
+                THB 0.00
+              </div>
+              <div class="stat-label">Fabric Cost</div>
+            </div>
+          </div>
+          <div class="stat-card flex-1">
+            <div class="stat-icon" style="color: var(--accent-amber)">✂️</div>
+            <div class="stat-info">
+              <div class="stat-value" id="report-order-tailor-fees">
+                THB 0.00
+              </div>
+              <div class="stat-label">Tailor Fees</div>
+            </div>
+          </div>
+          <div class="stat-card flex-1">
+            <div class="stat-icon" style="color: var(--accent-amber)">💳</div>
+            <div class="stat-info">
+              <div class="stat-value" id="report-order-card-fees">THB 0.00</div>
+              <div class="stat-label">Card Fees</div>
+            </div>
+          </div>
+          <div class="stat-card flex-1">
+            <div class="stat-icon green" style="color: var(--accent-green)">
+              📈
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="report-order-profit">THB 0.00</div>
+              <div class="stat-label">Order Profit</div>
+            </div>
+          </div>
+        </div>
+        <div
+          class="stats-row"
+          style="grid-template-columns: repeat(5, 1fr); margin-bottom: 0"
+        >
+          <div class="stat-card flex-1">
+            <div class="stat-icon blue">📋</div>
+            <div class="stat-info">
+              <div class="stat-value" id="report-order-count">0</div>
+              <div class="stat-label">Total Orders</div>
+            </div>
+          </div>
+          <div class="stat-card flex-1">
+            <div class="stat-icon" style="color: var(--accent-green)">🧵</div>
+            <div class="stat-info">
+              <div class="stat-value" id="report-order-items">0</div>
+              <div class="stat-label">Total Items</div>
+            </div>
+          </div>
+          <div class="stat-card flex-1">
+            <div class="stat-icon" style="color: var(--accent-amber)">🧥</div>
+            <div class="stat-info">
+              <div class="stat-value" id="report-order-jackets">0</div>
+              <div class="stat-label">Jacket &amp; Vest</div>
+            </div>
+          </div>
+          <div class="stat-card flex-1">
+            <div class="stat-icon" style="color: var(--accent-blue)">👖</div>
+            <div class="stat-info">
+              <div class="stat-value" id="report-order-pants">0</div>
+              <div class="stat-label">Trousers &amp; Skirt</div>
+            </div>
+          </div>
+          <div class="stat-card flex-1">
+            <div class="stat-icon" style="color: var(--accent-red)">👔</div>
+            <div class="stat-info">
+              <div class="stat-value" id="report-order-shirts">0</div>
+              <div class="stat-label">Shirt &amp; Dress</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 3: Fabric Sales ────────────────────────── -->
+    <div class="card mb-3 report-section">
+      <div class="card-header">
+        <h3 class="card-title">🧵 Fabric Sales</h3>
+        <span class="text-secondary" style="font-size: 12px"
+          >Fabric sold directly from inventory</span
+        >
+      </div>
+      <div class="card-body">
+        <div
+          class="stats-row"
+          style="grid-template-columns: repeat(5, 1fr); margin-bottom: 0"
+        >
+          <div class="stat-card flex-1">
+            <div class="stat-icon gold">💰</div>
+            <div class="stat-info">
+              <div class="stat-value" id="report-fs-revenue">THB 0.00</div>
+              <div class="stat-label">Fabric Sell Revenue</div>
+            </div>
+          </div>
+          <div class="stat-card flex-1">
+            <div class="stat-icon" style="color: var(--accent-amber)">🧶</div>
+            <div class="stat-info">
+              <div class="stat-value" id="report-fs-fabric-cost">THB 0.00</div>
+              <div class="stat-label">Fabric Cost</div>
+            </div>
+          </div>
+          <div class="stat-card flex-1">
+            <div class="stat-icon green" style="color: var(--accent-green)">
+              📈
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="report-fs-profit">THB 0.00</div>
+              <div class="stat-label">Fabric Sell Profit</div>
+            </div>
+          </div>
+          <div class="stat-card flex-1">
+            <div class="stat-icon blue">📋</div>
+            <div class="stat-info">
+              <div class="stat-value" id="report-fs-count">0</div>
+              <div class="stat-label">Total Sales</div>
+            </div>
+          </div>
+          <div class="stat-card flex-1">
+            <div class="stat-icon" style="color: var(--accent-blue)">🪡</div>
+            <div class="stat-info">
+              <div class="stat-value" id="report-fs-qty">0</div>
+              <div class="stat-label">Total Qty Sold</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 4: Ready Made Products ─────────────────── -->
+    <div class="card mb-3 report-section">
+      <div class="card-header">
+        <h3 class="card-title">👕 Ready Made Products</h3>
+        <span class="text-secondary" style="font-size: 12px"
+          >Ready made product sales</span
+        >
+      </div>
+      <div class="card-body">
+        <div class="stats-row" style="grid-template-columns: repeat(5, 1fr)">
+          <div class="stat-card flex-1">
+            <div class="stat-icon gold">💰</div>
+            <div class="stat-info">
+              <div class="stat-value" id="report-rm-revenue">THB 0.00</div>
+              <div class="stat-label">Ready Made Revenue</div>
+            </div>
+          </div>
+          <div class="stat-card flex-1">
+            <div class="stat-icon" style="color: var(--accent-red)">🏷️</div>
+            <div class="stat-info">
+              <div class="stat-value" id="report-rm-cost">THB 0.00</div>
+              <div class="stat-label">Total Cost</div>
+            </div>
+          </div>
+          <div class="stat-card flex-1">
+            <div class="stat-icon" style="color: var(--accent-amber)">🧶</div>
+            <div class="stat-info">
+              <div class="stat-value" id="report-rm-fabric-cost">THB 0.00</div>
+              <div class="stat-label">Fabric Cost</div>
+            </div>
+          </div>
+          <div class="stat-card flex-1">
+            <div class="stat-icon" style="color: var(--accent-amber)">✂️</div>
+            <div class="stat-info">
+              <div class="stat-value" id="report-rm-tailor-fees">THB 0.00</div>
+              <div class="stat-label">Tailor Fees</div>
+            </div>
+          </div>
+          <div class="stat-card flex-1">
+            <div class="stat-icon green" style="color: var(--accent-green)">
+              📈
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="report-rm-profit">THB 0.00</div>
+              <div class="stat-label">Ready Made Profit</div>
+            </div>
+          </div>
+        </div>
+        <div
+          class="stats-row"
+          style="grid-template-columns: repeat(5, 1fr); margin-bottom: 0"
+        >
+          <div class="stat-card flex-1">
+            <div class="stat-icon blue">📋</div>
+            <div class="stat-info">
+              <div class="stat-value" id="report-rm-count">0</div>
+              <div class="stat-label">Total Sales</div>
+            </div>
+          </div>
+          <div class="stat-card flex-1">
+            <div class="stat-icon" style="color: var(--accent-green)">👕</div>
+            <div class="stat-info">
+              <div class="stat-value" id="report-rm-units">0</div>
+              <div class="stat-label">Total Units Sold</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Details Table -->
+    <!-- <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Order Details</h3>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Date</th>
+                <th>Customer</th>
+                <th>Method</th>
+                <th class="text-right">Gross Amount</th>
+                <th class="text-right">Card Fee</th>
+                <th class="text-right">Net Amount</th>
+              </tr>
+            </thead>
+            <tbody id="report-table-body">
+ 
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div> -->
+  </div>
+</div>

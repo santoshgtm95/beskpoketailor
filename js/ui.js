@@ -230,7 +230,7 @@ function fmtCurrency(n) {
   return (
     "THB " +
     Number(n || 0)
-      .toFixed(2)
+      .toFixed(0)
       .replace(/\B(?=(\d{3})+(?!\d))/g, ",")
   );
 }
@@ -250,6 +250,7 @@ function fmtDateTime(iso) {
   if (!iso) return "—";
   const d = new Date(iso);
   return d.toLocaleString("en-US", {
+    timeZone: "Asia/Bangkok",
     month: "short",
     day: "numeric",
     hour: "2-digit",
@@ -257,9 +258,29 @@ function fmtDateTime(iso) {
   });
 }
 
+// ── Format order ID with zero-padding to 4 digits ─────────────
+function fmtOrderId(id) {
+  return String(id || 0).padStart(4, "0");
+}
+
 // ── Today's date string (YYYY-MM-DD) ──────────────────────────
 function todayStr() {
-  return new Date().toISOString().split("T")[0];
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Bangkok",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(
+    parts.map((part) => [part.type, part.value]),
+  );
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function bangkokNowIso() {
+  return new Date(Date.now() + 7 * 60 * 60 * 1000)
+    .toISOString()
+    .replace(/Z$/, "+07:00");
 }
 
 // ── Sanitize input ─────────────────────────────────────────────
@@ -339,7 +360,7 @@ async function audit(action, details) {
   await DB.auditlog.add({
     UserID: u?.UserID || 0,
     Action: action,
-    Timestamp: new Date().toISOString(),
+    Timestamp: bangkokNowIso(),
     Details: details,
   });
 }

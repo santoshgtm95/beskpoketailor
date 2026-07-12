@@ -144,4 +144,45 @@ const DB = {
     getAll: ()         => apiRequest('/auditlog'),
     add:    (r)        => apiRequest('/auditlog', { method: 'POST', body: r }),
   },
+
+  // Fabric Inventory
+  inventory: {
+    getAll: ()         => apiRequest('/inventory'),
+    get:    (id)       => apiRequest(`/inventory/${id}`),
+    add:    (r)        => apiRequest('/inventory', { method: 'POST', body: r }),
+    put:    (r)        => apiRequest(`/inventory/${r.FabricID}`, { method: 'PUT', body: r }),
+    delete: (id)       => apiRequest(`/inventory/${id}`, { method: 'DELETE' }),
+  },
+
+  // Expenses
+  expenses: {
+    getAll: ()         => apiRequest('/expenses'),
+    get:    (id)       => apiRequest(`/expenses/${id}`),
+    add:    (r)        => apiRequest('/expenses', { method: 'POST', body: r }),
+    put:    (r)        => apiRequest(`/expenses/${r.ExpenseID}`, { method: 'PUT', body: r }),
+    delete: (id)       => apiRequest(`/expenses/${id}`, { method: 'DELETE' }),
+  },
+
+  // Fabric Sales
+  fabricSales: {
+    getAll: ()         => apiRequest('/fabric-sales'),
+    add:    (r)        => apiRequest('/fabric-sales', { method: 'POST', body: r }),
+    delete: (id)       => apiRequest(`/fabric-sales/${id}`, { method: 'DELETE' }),
+  },
+
+  // Ready Made Products
+  readyMadeProducts: {
+    getAll: ()         => apiRequest('/ready-made-products'),
+    get:    (id)       => apiRequest(`/ready-made-products/${id}`),
+    add:    (r)        => apiRequest('/ready-made-products', { method: 'POST', body: r }),
+    put:    (r)        => apiRequest(`/ready-made-products/${r.ProductID}`, { method: 'PUT', body: r }),
+    delete: (id)       => apiRequest(`/ready-made-products/${id}`, { method: 'DELETE' }),
+  },
+
+  // Ready Made Sales
+  readyMadeSales: {
+    getAll: ()         => apiRequest('/ready-made-sales'),
+    add:    (r)        => apiRequest('/ready-made-sales', { method: 'POST', body: r }),
+    delete: (id)       => apiRequest(`/ready-made-sales/${id}`, { method: 'DELETE' }),
+  },
 };

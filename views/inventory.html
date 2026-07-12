@@ -1,0 +1,44 @@
+<div class="page" id="page-inventory">
+  <div class="card" style="margin-bottom: 16px">
+    <div class="flex justify-between items-center gap-3">
+      <div class="search-input-wrap" style="max-width: 320px; flex: 1">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="inventory-search" placeholder="Search fabric…" />
+      </div>
+      <div class="flex gap-2 items-center">
+        <span class="text-muted" style="font-size: 13px">
+          <strong id="inventory-count">0</strong> fabrics
+        </span>
+        <button class="btn btn-gold btn-sm" onclick="InventoryPage.openAdd()">
+          ➕ Add Fabric
+        </button>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="order-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Code</th>
+            <th>Color</th>
+            <th class="text-right">Registered Count</th>
+            <th class="text-right">Used Count</th>
+            <th class="text-right">Remaining Count</th>
+            <th class="text-right">Price</th>
+            <th>Remark</th>
+            <th class="text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="inventory-tbody">
+          <tr>
+            <td colspan="10" class="table-empty">Loading…</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="pagination" id="inventory-pagination"></div>
+  </div>
+</div>

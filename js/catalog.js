@@ -12,11 +12,49 @@ const CustomersPage = (() => {
   let currentPage = 1;
   const PER_PAGE = 10;
 
+  let uploadInitialized = false;
+
   async function load() {
     allCustomers = await DB.customers.getAll();
     currentPage = 1;
     render();
     document.getElementById("customers-search").oninput = render;
+
+    // Initialize Customer Photo upload handler
+    if (!uploadInitialized) {
+      const fileInput = document.getElementById("cm-image-file");
+      if (fileInput) {
+        fileInput.addEventListener("change", async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+
+          document.getElementById("cm-image-filename").textContent = file.name;
+
+          const formData = new FormData();
+          formData.append("image", file);
+
+          try {
+            Toast.info("Uploading photo…");
+            const res = await fetch("/api/customers/upload", {
+              method: "POST",
+              body: formData,
+            });
+            if (!res.ok) throw new Error("File upload failed on server.");
+            const data = await res.json();
+
+            document.getElementById("cm-image-url").value = data.filePath;
+            const preview = document.getElementById("cm-image-preview");
+            preview.src = data.filePath;
+            document.getElementById("cm-image-preview-wrap").style.display = "block";
+            Toast.success("Photo uploaded successfully!");
+          } catch (err) {
+            console.error("File upload failed:", err);
+            Toast.error("Failed to upload customer photo.");
+          }
+        });
+      }
+      uploadInitialized = true;
+    }
   }
 
   function render() {
@@ -43,7 +81,12 @@ const CustomersPage = (() => {
             .map(
               (c) => `<tr>
           <td class="font-mono text-muted">#${c.CustomerID}</td>
-          <td><strong>${sanitize(c.Name)}</strong></td>
+          <td>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              ${c.Image ? `<img src="${c.Image}" onclick="CustomersPage.previewImage('${c.Image}')" style="width: 32px; height: 32px; object-fit: cover; border-radius: 50%; border: 1px solid var(--border); cursor: pointer;" title="Click to view large" />` : `<div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--gold-dark), var(--gold)); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold;">${c.Name.charAt(0).toUpperCase()}</div>`}
+              <strong>${sanitize(c.Name)}</strong>
+            </div>
+          </td>
           <td>${sanitize(c.Phone || "—")}</td>
           <td>${sanitize(c.Email || "—")}</td>
           <td>${sanitize(c.Address || "—")}</td>
@@ -76,6 +119,11 @@ const CustomersPage = (() => {
       (id) => (document.getElementById(id).value = ""),
     );
     document.getElementById("cm-id-hidden").value = "";
+    document.getElementById("cm-image-file").value = "";
+    document.getElementById("cm-image-url").value = "";
+    document.getElementById("cm-image-filename").textContent = "No photo chosen";
+    document.getElementById("cm-image-preview").src = "";
+    document.getElementById("cm-image-preview-wrap").style.display = "none";
     clearValidation(document.getElementById("customer-modal-form"));
     Modal.open("modal-edit-customer");
   }
@@ -90,6 +138,17 @@ const CustomersPage = (() => {
     document.getElementById("cm-email").value = c.Email || "";
     document.getElementById("cm-address").value = c.Address || "";
     document.getElementById("cm-id-hidden").value = id;
+    document.getElementById("cm-image-file").value = "";
+    document.getElementById("cm-image-url").value = c.Image || "";
+    if (c.Image) {
+      document.getElementById("cm-image-filename").textContent = c.Image.split("/").pop();
+      document.getElementById("cm-image-preview").src = c.Image;
+      document.getElementById("cm-image-preview-wrap").style.display = "block";
+    } else {
+      document.getElementById("cm-image-filename").textContent = "No photo chosen";
+      document.getElementById("cm-image-preview").src = "";
+      document.getElementById("cm-image-preview-wrap").style.display = "none";
+    }
     clearValidation(document.getElementById("customer-modal-form"));
     Modal.open("modal-edit-customer");
   }
@@ -106,6 +165,7 @@ const CustomersPage = (() => {
       Phone: document.getElementById("cm-phone").value.trim(),
       Email: document.getElementById("cm-email").value.trim(),
       Address: document.getElementById("cm-address").value.trim(),
+      Image: document.getElementById("cm-image-url").value || null,
     };
     if (editId) {
       data.CustomerID = editId;
@@ -142,7 +202,15 @@ const CustomersPage = (() => {
     }
   }
 
-  return { load, render, openAdd, edit, save, delete: del };
+  function previewImage(url) {
+    const lightboxImg = document.getElementById("lightbox-image");
+    if (lightboxImg) {
+      lightboxImg.src = url;
+      Modal.open("modal-image-preview");
+    }
+  }
+
+  return { load, render, openAdd, edit, save, delete: del, previewImage };
 })();
 
 // ══════════════════════════════════════════════════════════════

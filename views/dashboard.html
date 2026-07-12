@@ -1,49 +1,172 @@
 <div class="page active" id="page-dashboard">
-  <h2
-    id="dashboard-greeting"
-    style="
-      font-size: 20px;
-      font-weight: 600;
-      margin-bottom: 20px;
-      color: var(--text-primary);
-    "
-  >
-    Good morning!
-  </h2>
+  <!-- Greeting -->
+  <div class="dash-header">
+    <div>
+      <h2 id="dashboard-greeting" class="dash-greeting">Good morning!</h2>
+      <p class="dash-subtext" id="dashboard-date"></p>
+    </div>
+    <div class="dash-header-actions">
+      <select
+        id="dash-period"
+        class="dash-period-select"
+        onchange="DashboardPage.refresh()"
+      >
+        <option value="7">Last 7 Days</option>
+        <option value="30" selected>Last 30 Days</option>
+        <option value="90">Last 3 Months</option>
+        <option value="365">This Year</option>
+        <option value="0">All Time</option>
+      </select>
+    </div>
+  </div>
 
-  <!-- Stats Row -->
-  <div class="stats-row">
-    <div class="stat-card">
-      <div class="stat-icon gold">💰</div>
-      <div class="stat-info">
-        <div class="stat-value" id="stat-total-revenue">THB 0.00</div>
-        <div class="stat-label">Total Revenue</div>
+  <!-- KPI Cards Row -->
+  <div class="kpi-row">
+    <div class="kpi-card kpi-gold">
+      <div class="kpi-icon">💰</div>
+      <div class="kpi-body">
+        <div class="kpi-value" id="stat-total-revenue">THB 0.00</div>
+        <div class="kpi-label">Total Revenue</div>
+        <div class="kpi-delta" id="kpi-revenue-delta"></div>
       </div>
     </div>
-    <div class="stat-card">
-      <div class="stat-icon blue">📋</div>
-      <div class="stat-info">
-        <div class="stat-value" id="stat-total-orders">0</div>
-        <div class="stat-label">Total Orders</div>
+    <div class="kpi-card kpi-blue">
+      <div class="kpi-icon">📋</div>
+      <div class="kpi-body">
+        <div class="kpi-value" id="stat-total-orders">0</div>
+        <div class="kpi-label">Total Orders</div>
+        <div class="kpi-delta" id="kpi-orders-delta"></div>
       </div>
     </div>
-    <div class="stat-card">
-      <div class="stat-icon green">👥</div>
-      <div class="stat-info">
-        <div class="stat-value" id="stat-total-customers">0</div>
-        <div class="stat-label">Customers</div>
+    <div class="kpi-card kpi-green">
+      <div class="kpi-icon">👥</div>
+      <div class="kpi-body">
+        <div class="kpi-value" id="stat-total-customers">0</div>
+        <div class="kpi-label">Customers</div>
+        <div class="kpi-delta" id="kpi-customers-delta"></div>
       </div>
     </div>
-    <div class="stat-card">
-      <div class="stat-icon gold">📅</div>
-      <div class="stat-info">
-        <div class="stat-value" id="stat-today-orders">0</div>
-        <div class="stat-label">Today's Orders</div>
+    <div class="kpi-card kpi-amber">
+      <div class="kpi-icon">💸</div>
+      <div class="kpi-body">
+        <div class="kpi-value" id="stat-total-expenses">THB 0.00</div>
+        <div class="kpi-label">Total Expenses</div>
+        <div class="kpi-delta" id="kpi-expenses-delta"></div>
+      </div>
+    </div>
+    <div class="kpi-card kpi-purple">
+      <div class="kpi-icon">💎</div>
+      <div class="kpi-body">
+        <div class="kpi-value" id="stat-avg-order">THB 0.00</div>
+        <div class="kpi-label">Avg. Order Value</div>
+      </div>
+    </div>
+    <div class="kpi-card kpi-teal">
+      <div class="kpi-icon">🧶</div>
+      <div class="kpi-body">
+        <div class="kpi-value" id="stat-inventory-count">0</div>
+        <div class="kpi-label">Fabric Types</div>
+        <div class="kpi-delta" id="kpi-inventory-delta"></div>
+      </div>
+    </div>
+    <div class="kpi-card kpi-gold">
+      <div class="kpi-icon">🧵</div>
+      <div class="kpi-body">
+        <div class="kpi-value" id="stat-fabric-sales">THB 0.00</div>
+        <div class="kpi-label">Fabric Sales</div>
+        <div class="kpi-delta" id="kpi-fabric-sales-count"></div>
+      </div>
+    </div>
+    <div class="kpi-card kpi-blue">
+      <div class="kpi-icon">👔</div>
+      <div class="kpi-body">
+        <div class="kpi-value" id="stat-ready-made-sales">THB 0.00</div>
+        <div class="kpi-label">Ready Made Sales</div>
+        <div class="kpi-delta" id="kpi-ready-made-count"></div>
       </div>
     </div>
   </div>
 
-  <div class="grid-2" style="gap: 20px">
+  <!-- Charts Row 1 -->
+  <div class="dash-grid-3-1" style="gap: 20px; margin-bottom: 20px">
+    <!-- Revenue + Orders Bar Chart -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="title-icon">📈</span> Revenue & Sales Over Time
+        </div>
+        <div class="dash-legend">
+          <span class="legend-dot" style="background: var(--gold)"></span
+          ><span class="text-muted">Revenue</span>
+          <span class="legend-dot" style="background: var(--accent-blue)"></span
+          ><span class="text-muted">Transactions</span>
+        </div>
+      </div>
+      <div class="chart-container" style="height: 240px">
+        <canvas id="chart-revenue-orders"></canvas>
+      </div>
+    </div>
+    <!-- Net Profit Donut -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="title-icon">📊</span> Revenue vs Expenses
+        </div>
+      </div>
+      <div class="chart-container" style="height: 200px">
+        <canvas id="chart-profit-donut"></canvas>
+      </div>
+      <div id="profit-summary" class="profit-summary"></div>
+    </div>
+  </div>
+
+  <!-- Charts Row 2 -->
+  <div class="dash-grid-2" style="gap: 20px; margin-bottom: 20px">
+    <!-- Expenses by category bar -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="title-icon">💸</span> Expenses Breakdown
+        </div>
+      </div>
+      <div class="chart-container" style="height: 220px">
+        <canvas id="chart-expenses-bar"></canvas>
+      </div>
+    </div>
+    <!-- Recent Expenses -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="title-icon">💸</span> Recent Expenses
+        </div>
+        <button
+          class="btn btn-ghost btn-sm"
+          onclick="AppShell.navigate('expenses')"
+        >
+          View All →
+        </button>
+      </div>
+      <div class="order-table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Name</th>
+              <th class="text-right">Amount</th>
+            </tr>
+          </thead>
+          <tbody id="recent-expenses-tbody">
+            <tr>
+              <td colspan="3" class="table-empty">Loading…</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Row: Recent Orders + Quick Actions -->
+  <div class="grid-2" style="gap: 20px; margin-bottom: 20px">
     <!-- Recent Orders -->
     <div class="card">
       <div class="card-header">
@@ -64,44 +187,21 @@
               <th>#</th>
               <th>Customer</th>
               <th>Date</th>
+              <th>Status</th>
               <th class="text-right">Total</th>
             </tr>
           </thead>
           <tbody id="recent-orders-tbody">
             <tr>
-              <td colspan="4" class="table-empty">Loading…</td>
+              <td colspan="5" class="table-empty">Loading…</td>
             </tr>
           </tbody>
         </table>
       </div>
     </div>
 
-    <!-- Top Items + Avg -->
+    <!-- Right column: quick stats + quick actions -->
     <div style="display: flex; flex-direction: column; gap: 16px">
-      <div class="card">
-        <div
-          style="
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-          "
-        >
-          <div>
-            <div
-              class="text-muted"
-              style="
-                font-size: 12px;
-                text-transform: uppercase;
-                letter-spacing: 1px;
-              "
-            >
-              Avg. Order Value
-            </div>
-            <div class="stat-value text-gold" id="stat-avg-order">THB 0.00</div>
-          </div>
-          <div style="font-size: 36px">💎</div>
-        </div>
-      </div>
       <!-- Quick Actions -->
       <div class="card">
         <div class="card-header" style="margin-bottom: 12px">
@@ -115,6 +215,18 @@
           </button>
           <button class="btn btn-ghost btn-full" id="quick-new-customer">
             ➕ Add Customer
+          </button>
+          <button
+            class="btn btn-ghost btn-full"
+            onclick="AppShell.navigate('expenses')"
+          >
+            💰 Log Expense
+          </button>
+          <button
+            class="btn btn-ghost btn-full"
+            onclick="AppShell.navigate('inventory')"
+          >
+            🧶 View Inventory
           </button>
         </div>
       </div>
