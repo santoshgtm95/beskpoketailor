@@ -1831,20 +1831,22 @@ const OrdersPage = (() => {
             if (lines.length > 2) itemsLabel += `, +${lines.length - 2} more`;
           }
 
-          const stamp = o.CreatedAt || `${o.OrderDate}T00:00:00+07:00`;
-          const dt = new Date(stamp);
-          const bkkParts = new Intl.DateTimeFormat("en-GB", {
-            timeZone: "Asia/Bangkok",
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-          })
-            .formatToParts(dt)
-            .reduce((acc, p) => ((acc[p.type] = p.value), acc), {});
-          const dateTimeStr = `${bkkParts.day}/${bkkParts.month}/${bkkParts.year} ${bkkParts.hour}:${bkkParts.minute}`;
+          // Show the registered OrderDate; append time from CreatedAt only if available
+          const dateDisplay = fmtDate(o.OrderDate);
+          let timeDisplay = "";
+          if (o.CreatedAt) {
+            const dt = new Date(o.CreatedAt);
+            const bkkParts = new Intl.DateTimeFormat("en-GB", {
+              timeZone: "Asia/Bangkok",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: false,
+            })
+              .formatToParts(dt)
+              .reduce((acc, p) => ((acc[p.type] = p.value), acc), {});
+            timeDisplay = `<br><small class="text-muted">${bkkParts.hour}:${bkkParts.minute}</small>`;
+          }
+          const dateTimeStr = `${dateDisplay}${timeDisplay}`;
 
           return `<tr>
           <td class="font-mono" style="color: var(--text-primary)">${fmtOrderId(o.OrderID)}</td>
